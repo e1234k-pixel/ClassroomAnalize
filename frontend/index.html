@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Classroom Insights & Grader Hub</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Sarabun', sans-serif; }
+        .tab-active { background: #1e40af; color: white; }
+        .tab-inactive { background: #e5e7eb; color: #374151; }
+        .tab-inactive:hover { background: #d1d5db; }
+        .split-left { width: 60%; }
+        .split-right { width: 40%; }
+        .risk-green { background: #d1fae5; color: #065f46; }
+        .risk-yellow { background: #fef3c7; color: #92400e; }
+        .risk-red { background: #fee2e2; color: #991b1b; }
+        .snippet-chip { transition: all 0.2s; }
+        .snippet-chip:hover { transform: scale(1.05); }
+        iframe { border: 1px solid #d1d5db; border-radius: 0.5rem; }
+        .modal-overlay { background: rgba(0,0,0,0.5); }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+
+<!-- Header -->
+<header class="bg-blue-900 text-white shadow-lg">
+    <div class="container mx-auto px-4 py-4">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="text-2xl">🎓</div>
+                <div>
+                    <h1 class="text-xl font-bold">Classroom Insights & Grader Hub</h1>
+                    <p class="text-blue-200 text-sm">AI-Powered Grading & Student Analytics</p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-4">
+                <span class="text-sm">👤 ครูเอก</span>
+                <span class="text-sm bg-blue-800 px-3 py-1 rounded-full">LongCat 2.0</span>
+            </div>
+        </div>
+    </div>
+</header>
+
+<!-- Tabs -->
+<nav class="bg-white shadow-sm border-b">
+    <div class="container mx-auto px-4">
+        <div class="flex space-x-1 py-2">
+            <button onclick="switchTab('grading')" id="tab-grading" class="tab-active px-4 py-2 rounded-lg font-medium transition">
+                🖥️ Grading Studio
+            </button>
+            <button onclick="switchTab('tracker')" id="tab-tracker" class="tab-inactive px-4 py-2 rounded-lg font-medium transition">
+                📋 Debt Tracker
+            </button>
+            <button onclick="switchTab('gradebook')" id="tab-gradebook" class="tab-inactive px-4 py-2 rounded-lg font-medium transition">
+                📊 Gradebook
+            </button>
+            <button onclick="switchTab('export')" id="tab-export" class="tab-inactive px-4 py-2 rounded-lg font-medium transition">
+                📄 Export & Settings
+            </button>
+        </div>
+    </div>
+</nav>
+
+<!-- Tab 1: Grading Studio -->
+<div id="content-grading" class="container mx-auto px-4 py-6">
+    <!-- Course Selection -->
+    <div class="mb-4 flex items-center space-x-4">
+        <label class="font-medium">เลือกวิชา:</label>
+        <select id="course-select" class="border rounded-lg px-4 py-2 w-64">
+            <option value="1">วิชาการเขียนโปรแกรมเชิงวัตถุ</option>
+            <option value="2">วิชาโครงสร้างข้อมูล</option>
+        </select>
+        <label class="font-medium">เลือกงาน:</label>
+        <select id="assignment-select" class="border rounded-lg px-4 py-2 w-64">
+            <option value="1">Lab 1: โครงสร้างควบคุม</option>
+            <option value="2">Lab 2: ฟังก์ชัน</option>
+        </select>
+    </div>
+
+    <!-- Split Screen -->
+    <div class="flex gap-4">
+        <!-- Left: Work Viewer -->
+        <div class="split-left bg-white rounded-xl shadow-lg p-4">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-lg font-bold">📝 งานนักเรียน</h2>
+                <div class="flex space-x-2">
+                    <select id="student-select" class="border rounded-lg px-3 py-1 text-sm">
+                        <option>นักเรียนที่ 1 - สมชาย</option>
+                        <option>นักเรียนที่ 2 - สมหญิง</option>
+                    </select>
+                    <button onclick="openClassroom()" class="bg-green-600 text-white px-3 py-1 rounded-lg text-sm hover:bg-green-700">
+                        ↗ เปิดใน Classroom
+                    </button>
+                </div>
+            </div>
+            <!-- Iframe placeholder for student work -->
+            <div id="work-viewer" class="h-96 bg-gray-100 rounded-lg flex items-center justify-center">
+                <div class="text-center text-gray-500">
+                    <div class="text-4xl mb-2">📄</div>
+                    <p>เลือกนักเรียนเพื่อดูงาน</p>
+                    <p class="text-sm">หรือเปิดใน Google Classroom</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right: Insights & Feedback -->
+        <div class="split-right space-y-4">
+            <!-- Student Info -->
+            <div class="bg-white rounded-xl shadow-lg p-4">
+                <h3 class="font-bold mb-3">👤 ข้อมูลนักเรียน</h3>
+                <div class="grid grid-cols-2 gap-3 text-sm">
+                    <div class="bg-blue-50 p-3 rounded-lg">
+                        <div class="text-blue-600 font-medium">คะแนนรวม</div>
+                        <div class="text-2xl font-bold">75/100</div>
+                    </div>
+                    <div class="bg-yellow-50 p-3 rounded-lg">
+                        <div class="text-yellow-600 font-medium">งานค้าง</div>
+                        <div class="text-2xl font-bold">2</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Snippets -->
+            <div class="bg-white rounded-xl shadow-lg p-4">
+                <h3 class="font-bold mb-3">⚡ Quick Snippets</h3>
+                <div class="flex flex-wrap gap-2">
+                    <button onclick="copySnippet('ทำได้ดีมาก ลายมือเรียบร้อย')" class="snippet-chip bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm hover:bg-green-200">
+                        ✅ ทำได้ดีมาก
+                    </button>
+                    <button onclick="copySnippet('ส่งไฟล์ผิด กรุณาแนบใหม่')" class="snippet-chip bg-red-100 text-red-800 px-3 py-1 rounded-full text-sm hover:bg-red-200">
+                        ❌ ส่งไฟล์ผิด
+                    </button>
+                    <button onclick="copySnippet('ขาดหัวข้อสรุปผล')" class="snippet-chip bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm hover:bg-yellow-200">
+                        ⚠️ ขาดสรุปผล
+                    </button>
+                    <button onclick="copySnippet('ตรวจคำตอบใหม่อีกครั้ง')" class="snippet-chip bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm hover:bg-blue-200">
+                        🔄 ตรวจใหม่
+                    </button>
+                </div>
+            </div>
+
+            <!-- AI Feedback -->
+            <div class="bg-white rounded-xl shadow-lg p-4">
+                <h3 class="font-bold mb-3">🤖 AI ช่วยร่าง Feedback</h3>
+                <textarea id="feedback-text" class="w-full border rounded-lg p-3 text-sm" rows="4" placeholder="พิมพ์หรือกดปุ่มด้านล่างเพื่อให้ AI ช่วยร่าง..."></textarea>
+                <div class="flex space-x-2 mt-2">
+                    <button onclick="generateFeedback()" class="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-purple-700">
+                        ✨ ร่างอัตโนมัติ
+                    </button>
+                    <button onclick="copyFeedback()" class="bg-gray-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-gray-700">
+                        📋 คัดลอก
+                    </button>
+                </div>
+            </div>
+
+            <!-- Rubric Checklist -->
+            <div class="bg-white rounded-xl shadow-lg p-4">
+                <h3 class="font-bold mb-3">📋 Rubric Checklist</h3>
+                <div class="space-y-2">
+                    <label class="flex items-center space-x-2">
+                        <input type="checkbox" class="rounded">
+                        <span class="text-sm">ความถูกต้องของคำตอบ (50%)</span>
+                    </label>
+                    <label class="flex items-center space-x-2">
+                        <input type="checkbox" class="rounded">
+                        <span class="text-sm">ความคิดสร้างสรรค์ (30%)</span>
+                    </label>
+                    <label class="flex items-center space-x-2">
+                        <input type="checkbox" class="rounded">
+                        <span class="text-sm">การจัดรูปแบบ (20%)</span>
+                    </label>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tab 2: Debt Tracker -->
+<div id="content-tracker" class="container mx-auto px-4 py-6 hidden">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Heatmap -->
+        <div class="bg-white rounded-xl shadow-lg p-6">
+            <h2 class="text-lg font-bold mb-4">🗺️ Classroom Heatmap</h2>
+            <div class="grid grid-cols-4 gap-2">
+                <div class="risk-green p-3 rounded-lg text-center">
+                    <div class="font-bold">สมชาย</div>
+                    <div class="text-xs">ครบ ✓</div>
+                </div>
+                <div class="risk-yellow p-3 rounded-lg text-center">
+                    <div class="font-bold">สมหญิง</div>
+                    <div class="text-xs">ค้าง 1</div>
+                </div>
+                <div class="risk-red p-3 rounded-lg text-center">
+                    <div class="font-bold">วิชัย</div>
+                    <div class="text-xs">ค้าง 3</div>
+                </div>
+                <div class="risk-green p-3 rounded-lg text-center">
+                    <div class="font-bold">มาลี</div>
+                    <div class="text-xs">ครบ ✓</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Student Slip -->
+        <div class="bg-white rounded-xl shadow-lg p-6">
+            <h2 class="text-lg font-bold mb-4">📄 Student Slip</h2>
+            <div class="bg-gray-50 p-4 rounded-lg">
+                <p class="text-sm font-medium mb-2">น้องวิชัย ม.4/1</p>
+                <p class="text-sm text-gray-600 mb-2">งานค้าง 3 ชิ้น:</p>
+                <ul class="text-sm text-gray-600 list-disc list-inside mb-3">
+                    <li>Lab 1: โครงสร้างควบคุม</li>
+                    <li>Lab 2: ฟังก์ชัน</li>
+                    <li>Lab 3: อาร์เรย์</li>
+                </ul>
+                <p class="text-sm font-medium text-red-600">คะแนนเก็บปัจจุบัน 45/100</p>
+            </div>
+            <button onclick="copySlip()" class="mt-3 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700">
+                📋 คัดลอกส่ง LINE
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Tab 3: Gradebook -->
+<div id="content-gradebook" class="container mx-auto px-4 py-6 hidden">
+    <div class="bg-white rounded-xl shadow-lg p-6">
+        <h2 class="text-lg font-bold mb-4">📊 สมุดคะแนนรวม</h2>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead class="bg-gray-100">
+                    <tr>
+                        <th class="px-4 py-2 text-left">ชื่อ</th>
+                        <th class="px-4 py-2">Lab 1</th>
+                        <th class="px-4 py-2">Lab 2</th>
+                        <th class="px-4 py-2">Lab 3</th>
+                        <th class="px-4 py-2">รวม</th>
+                        <th class="px-4 py-2">เกรด</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr class="border-b">
+                        <td class="px-4 py-2">สมชาย</td>
+                        <td class="px-4 py-2 text-center">90</td>
+                        <td class="px-4 py-2 text-center">85</td>
+                        <td class="px-4 py-2 text-center">95</td>
+                        <td class="px-4 py-2 text-center font-bold">270/300</td>
+                        <td class="px-4 py-2 text-center text-green-600 font-bold">4.0</td>
+                    </tr>
+                    <tr class="border-b">
+                        <td class="px-4 py-2">สมหญิง</td>
+                        <td class="px-4 py-2 text-center">75</td>
+                        <td class="px-4 py-2 text-center">80</td>
+                        <td class="px-4 py-2 text-center">-</td>
+                        <td class="px-4 py-2 text-center font-bold">155/300</td>
+                        <td class="px-4 py-2 text-center text-yellow-600 font-bold">2.5</td>
+                    </tr>
+                    <tr class="border-b">
+                        <td class="px-4 py-2">วิชัย</td>
+                        <td class="px-4 py-2 text-center text-red-500">-</td>
+                        <td class="px-4 py-2 text-center text-red-500">-</td>
+                        <td class="px-4 py-2 text-center text-red-500">-</td>
+                        <td class="px-4 py-2 text-center font-bold">0/300</td>
+                        <td class="px-4 py-2 text-center text-red-600 font-bold">0</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Tab 4: Export & Settings -->
+<div id="content-export" class="container mx-auto px-4 py-6 hidden">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Grading Scale -->
+        <div class="bg-white rounded-xl shadow-lg p-6">
+            <h2 class="text-lg font-bold mb-4">⚙️ ตั้งค่าเกณฑ์เกรด</h2>
+            <div class="space-y-3">
+                <div class="flex items-center space-x-3">
+                    <input type="number" value="80" class="border rounded px-3 py-1 w-20">
+                    <span class="text-sm">คะแนนขึ้นไป = เกรด 4</span>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <input type="number" value="75" class="border rounded px-3 py-1 w-20">
+                    <span class="text-sm">คะแนนขึ้นไป = เกรด 3.5</span>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <input type="number" value="70" class="border rounded px-3 py-1 w-20">
+                    <span class="text-sm">คะแนนขึ้นไป = เกรด 3</span>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <input type="number" value="65" class="border rounded px-3 py-1 w-20">
+                    <span class="text-sm">คะแนนขึ้นไป = เกรด 2.5</span>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <input type="number" value="60" class="border rounded px-3 py-1 w-20">
+                    <span class="text-sm">คะแนนขึ้นไป = เกรด 2</span>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <input type="number" value="55" class="border rounded px-3 py-1 w-20">
+                    <span class="text-sm">คะแนนขึ้นไป = เกรด 1.5</span>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <input type="number" value="50" class="border rounded px-3 py-1 w-20">
+                    <span class="text-sm">คะแนนขึ้นไป = เกรด 1</span>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <span class="text-sm text-red-600">ต่ำกว่า 50 = เกรด 0</span>
+                </div>
+            </div>
+            <button class="mt-4 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700">
+                💾 บันทึกการตั้งค่า
+            </button>
+        </div>
+
+        <!-- Export -->
+        <div class="bg-white rounded-xl shadow-lg p-6">
+            <h2 class="text-lg font-bold mb-4">📤 ส่งออกข้อมูล</h2>
+            <div class="space-y-3">
+                <button class="w-full bg-green-600 text-white px-4 py-3 rounded-lg hover:bg-green-700 flex items-center justify-center space-x-2">
+                    <span>📊</span>
+                    <span>ส่งออกเป็น Excel (.xlsx)</span>
+                </button>
+                <button class="w-full bg-red-600 text-white px-4 py-3 rounded-lg hover:bg-red-700 flex items-center justify-center space-x-2">
+                    <span>📄</span>
+                    <span>ส่งออกเป็น PDF (ปพ.5)</span>
+                </button>
+                <button class="w-full bg-blue-600 text-white px-4 py-3 rounded-lg hover:bg-blue-700 flex items-center justify-center space-x-2">
+                    <span>📋</span>
+                    <span>คัดลอกตารางคะแนน</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast Notification -->
+<div id="toast" class="fixed bottom-4 right-4 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg hidden">
+    ✅ คัดลอกแล้ว!
+</div>
+
+<script>
+    // Tab switching
+    function switchTab(tabName) {
+        // Hide all content
+        document.querySelectorAll('[id^="content-"]').forEach(el => el.classList.add('hidden'));
+        // Show selected content
+        document.getElementById('content-' + tabName).classList.remove('hidden');
+        
+        // Update tab styles
+        document.querySelectorAll('[id^="tab-"]').forEach(el => {
+            el.classList.remove('tab-active');
+            el.classList.add('tab-inactive');
+        });
+        const activeTab = document.getElementById('tab-' + tabName);
+        activeTab.classList.remove('tab-inactive');
+        activeTab.classList.add('tab-active');
+    }
+
+    // Copy functions
+    function copySnippet(text) {
+        navigator.clipboard.writeText(text);
+        showToast('✅ คัดลอก: ' + text);
+    }
+
+    function copyFeedback() {
+        const text = document.getElementById('feedback-text').value;
+        navigator.clipboard.writeText(text);
+        showToast('✅ คัดลอก Feedback แล้ว');
+    }
+
+    function copySlip() {
+        const slip = `น้องวิชัย ม.4/1 | งานค้าง 3 ชิ้น: (1) Lab 1 (2) Lab 2 (3) Lab 3 | คะแนนเก็บปัจจุบัน 45/100`;
+        navigator.clipboard.writeText(slip);
+        showToast('✅ คัดลอก Student Slip แล้ว');
+    }
+
+    function generateFeedback() {
+        const feedback = "งานที่ส่งมาทำได้ดีในส่วนของการเขียนโครงสร้าง แต่ยังมีข้อผิดพลาดในส่วนของเงื่อนไข ลองตรวจสอบเงื่อนไข if-else อีกครั้งครับ";
+        document.getElementById('feedback-text').value = feedback;
+        showToast('✨ ร่าง Feedback แล้ว');
+    }
+
+    function openClassroom() {
+        window.open('https://classroom.google.com', '_blank');
+    }
+
+    function showToast(message) {
+        const toast = document.getElementById('toast');
+        toast.textContent = message;
+        toast.classList.remove('hidden');
+        setTimeout(() => toast.classList.add('hidden'), 3000);
+    }
+</script>
+
+</body>
+</html>

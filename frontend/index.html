@@ -7,600 +7,235 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Sarabun', 'sans-serif'] },
+                    colors: {
+                        brand: {
+                            50: '#eef4ff', 100: '#dbe6fe', 200: '#bfd3fe',
+                            500: '#3b6ef5', 600: '#2554d4', 700: '#1e42ab', 800: '#1a347e', 900: '#152a63'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
     <style>
         body { font-family: 'Sarabun', sans-serif; }
-        .tab-active { background: #1e40af; color: white; }
-        .tab-inactive { background: #e5e7eb; color: #374151; }
-        .tab-inactive:hover { background: #d1d5db; }
-        .split-left { width: 60%; }
-        .split-right { width: 40%; }
-        .risk-green { background: #d1fae5; color: #065f46; }
-        .risk-yellow { background: #fef3c7; color: #92400e; }
-        .risk-red { background: #fee2e2; color: #991b1b; }
-        .snippet-chip { transition: all 0.2s; }
-        .snippet-chip:hover { transform: scale(1.05); }
-        iframe { border: 1px solid #d1d5db; border-radius: 0.5rem; }
-        .modal-overlay { background: rgba(0,0,0,0.5); }
-        .loading-spinner { animation: spin 1s linear infinite; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .glass { background: rgba(255,255,255,0.85); backdrop-filter: blur(12px); }
+        .tab-active { background: linear-gradient(135deg,#2554d4,#3b6ef5); color: #fff; box-shadow: 0 4px 14px rgba(37,84,212,.35); }
+        .tab-inactive { background: transparent; color: #475569; }
+        .tab-inactive:hover { background: #eef4ff; color: #2554d4; }
+        .risk-green { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
+        .risk-yellow { background: #fef9c3; color: #854d0e; border: 1px solid #fde047; }
+        .risk-red { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+        .snippet-chip { transition: all .15s; }
+        .snippet-chip:hover { transform: translateY(-2px); }
+        .card { background:#fff; border-radius:1rem; box-shadow:0 1px 3px rgba(0,0,0,.08),0 8px 24px rgba(21,42,99,.06); }
+        .fade-in { animation: fadeIn .35s ease; }
+        @keyframes fadeIn { from { opacity:0; transform:translateY(6px);} to { opacity:1; transform:none;} }
+        ::-webkit-scrollbar { height:8px; width:8px; }
+        ::-webkit-scrollbar-thumb { background:#c7d2fe; border-radius:4px; }
     </style>
 </head>
-<body class="bg-gray-50 min-h-screen">
+<body class="bg-slate-100 min-h-screen">
 
-<!-- Login Modal -->
-<div id="login-modal" class="fixed inset-0 modal-overlay flex items-center justify-center z-50">
-    <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4 text-center">
-        <div class="text-6xl mb-4">🎓</div>
-        <h2 class="text-2xl font-bold mb-2">Classroom Insights & Grader Hub</h2>
-        <p class="text-gray-600 mb-6">เข้าสู่ระบบด้วย Google Account เพื่อเชื่อมต่อ Google Classroom</p>
-        <button onclick="handleGoogleLogin()" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 flex items-center justify-center space-x-2 w-full">
-            <svg class="w-5 h-5" viewBox="0 0 24 24">
-                <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-            </svg>
-            <span>เข้าสู่ระบบด้วย Google</span>
+<!-- ══════════ LOGIN SCREEN ══════════ -->
+<div id="login-modal" class="fixed inset-0 z-50 bg-gradient-to-br from-brand-800 via-brand-700 to-indigo-900 flex items-center justify-center px-4">
+    <div class="card max-w-md w-full p-10 text-center fade-in">
+        <div class="mx-auto w-20 h-20 rounded-2xl bg-gradient-to-br from-brand-500 to-indigo-500 flex items-center justify-center text-4xl mb-5 shadow-lg">🎓</div>
+        <h2 class="text-2xl font-bold text-slate-800 mb-1">Classroom Insights</h2>
+        <p class="text-sm text-slate-500 mb-8">Grader Hub — เครื่องมือวิเคราะห์และตรวจงานอัจฉริยะสำหรับครู</p>
+        <button onclick="handleGoogleLogin()" class="w-full bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-medium py-3 rounded-xl flex items-center justify-center gap-3 shadow-sm transition">
+            <svg class="w-5 h-5" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+            เข้าสู่ระบบด้วย Google
         </button>
-        <p class="text-xs text-gray-500 mt-4">ระบบจะขอสิทธิ์อ่านข้อมูล Classroom เท่านั้น</p>
+        <p class="text-xs text-slate-400 mt-6">🔒 ระบบขอสิทธิ์อ่านข้อมูล Classroom เท่านั้น (Read-Only)</p>
     </div>
 </div>
 
-<!-- Header -->
-<header class="bg-blue-900 text-white shadow-lg">
-    <div class="container mx-auto px-4 py-4">
-        <div class="flex items-center justify-between">
-            <div class="flex items-center space-x-3">
-                <div class="text-2xl">🎓</div>
-                <div>
-                    <h1 class="text-xl font-bold">Classroom Insights & Grader Hub</h1>
-                    <p class="text-blue-200 text-sm">AI-Powered Grading & Student Analytics</p>
-                </div>
+<!-- ══════════ HEADER ══════════ -->
+<header class="glass sticky top-0 z-40 border-b border-slate-200">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-500 to-indigo-500 flex items-center justify-center text-xl shadow">🎓</div>
+            <div>
+                <h1 class="font-bold text-slate-800 leading-tight">Classroom Insights & Grader Hub</h1>
+                <p class="text-xs text-slate-500">AI-Powered Grading & Analytics</p>
             </div>
-            <div class="flex items-center space-x-4">
-                <div id="user-info" class="hidden flex items-center space-x-2">
-                    <img id="user-photo" class="w-8 h-8 rounded-full" src="" alt="">
-                    <span id="user-name" class="text-sm"></span>
-                </div>
-                <button onclick="handleGoogleLogout()" class="text-sm bg-blue-800 px-3 py-1 rounded-full hover:bg-blue-700">Logout</button>
-                <span class="text-sm bg-blue-800 px-3 py-1 rounded-full">LongCat 2.0</span>
+        </div>
+        <div class="flex items-center gap-3">
+            <div id="user-info" class="hidden items-center gap-2 bg-slate-50 border border-slate-200 rounded-full pl-1 pr-3 py-1">
+                <img id="user-photo" class="w-7 h-7 rounded-full" src="" alt="">
+                <span id="user-name" class="text-sm text-slate-700"></span>
             </div>
+            <button onclick="handleGoogleLogout()" class="text-xs bg-slate-200 hover:bg-slate-300 text-slate-600 px-3 py-1.5 rounded-full transition">ออกจากระบบ</button>
         </div>
     </div>
 </header>
 
-<!-- Connection Status Bar -->
-<div id="connection-status" class="bg-yellow-100 border-b border-yellow-300 text-yellow-800 px-4 py-2 text-center text-sm">
-    ⏳ กำลังเชื่อมต่อกับ Google Classroom...
-</div>
+<!-- ══════════ MAIN ══════════ -->
+<main id="main-content" class="hidden max-w-7xl mx-auto px-4 py-6">
 
-<!-- Main Content -->
-<main id="main-content" class="hidden">
+    <!-- Stat Cards -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div class="card p-4 fade-in"><p class="text-xs text-slate-500 mb-1">📚 วิชาที่สอน</p><p id="stat-courses" class="text-2xl font-bold text-brand-600">-</p></div>
+        <div class="card p-4 fade-in"><p class="text-xs text-slate-500 mb-1">👥 นักเรียนรวม</p><p id="stat-students" class="text-2xl font-bold text-emerald-600">-</p></div>
+        <div class="card p-4 fade-in"><p class="text-xs text-slate-500 mb-1">📋 งานทั้งหมด</p><p id="stat-assignments" class="text-2xl font-bold text-amber-600">-</p></div>
+        <div class="card p-4 fade-in"><p class="text-xs text-slate-500 mb-1">⚠️ งานค้างรวม</p><p id="stat-pending" class="text-2xl font-bold text-rose-600">-</p></div>
+    </div>
+
     <!-- Tabs -->
-    <nav class="bg-white shadow-sm border-b">
-        <div class="container mx-auto px-4">
-            <div class="flex space-x-1 py-2">
-                <button onclick="switchTab('grading')" id="tab-grading" class="tab-active px-4 py-2 rounded-lg font-medium transition">
-                    🖥️ Grading Studio
-                </button>
-                <button onclick="switchTab('tracker')" id="tab-tracker" class="tab-inactive px-4 py-2 rounded-lg font-medium transition">
-                    📋 Debt Tracker
-                </button>
-                <button onclick="switchTab('gradebook')" id="tab-gradebook" class="tab-inactive px-4 py-2 rounded-lg font-medium transition">
-                    📊 Gradebook
-                </button>
-                <button onclick="switchTab('export')" id="tab-export" class="tab-inactive px-4 py-2 rounded-lg font-medium transition">
-                    📄 Export & Settings
-                </button>
-            </div>
-        </div>
+    <nav class="card p-1.5 mb-6 flex gap-1 overflow-x-auto">
+        <button onclick="switchTab('grading')" id="tab-grading" class="tab-active px-5 py-2.5 rounded-xl text-sm font-semibold whitespace-nowrap transition">🖥️ Grading Studio</button>
+        <button onclick="switchTab('tracker')" id="tab-tracker" class="tab-inactive px-5 py-2.5 rounded-xl text-sm font-semibold whitespace-nowrap transition">📋 Debt Tracker</button>
+        <button onclick="switchTab('gradebook')" id="tab-gradebook" class="tab-inactive px-5 py-2.5 rounded-xl text-sm font-semibold whitespace-nowrap transition">📊 Gradebook</button>
+        <button onclick="switchTab('export')" id="tab-export" class="tab-inactive px-5 py-2.5 rounded-xl text-sm font-semibold whitespace-nowrap transition">📄 Export & Settings</button>
     </nav>
 
-    <!-- Tab 1: Grading Studio -->
-    <div id="content-grading" class="container mx-auto px-4 py-6">
-        <!-- Course Selection -->
-        <div class="mb-4 flex items-center space-x-4">
-            <label class="font-medium">เลือกวิชา:</label>
-            <select id="course-select" class="border rounded-lg px-4 py-2 w-64">
-                <option value="">-- กำลังโหลด --</option>
-            </select>
-            <label class="font-medium">เลือกงาน:</label>
-            <select id="assignment-select" class="border rounded-lg px-4 py-2 w-64">
-                <option value="">-- เลือกงาน --</option>
-            </select>
+    <!-- ═══ TAB 1: GRADING STUDIO ═══ -->
+    <div id="content-grading" class="fade-in">
+        <div class="card p-4 mb-4 flex flex-wrap items-center gap-3">
+            <span class="text-sm font-semibold text-slate-600">📚 วิชา</span>
+            <select id="course-select" onchange="onCourseChange()" class="border-slate-300 border rounded-lg px-3 py-2 text-sm bg-white min-w-[240px]"><option value="">-- กำลังโหลด --</option></select>
+            <span class="text-sm font-semibold text-slate-600">📝 งาน</span>
+            <select id="assignment-select" onchange="onAssignmentChange()" class="border-slate-300 border rounded-lg px-3 py-2 text-sm bg-white min-w-[220px]"><option value="">-- เลือกงาน --</option></select>
+            <span class="text-sm font-semibold text-slate-600">👤 นักเรียน</span>
+            <select id="student-select" onchange="onStudentChange()" class="border-slate-300 border rounded-lg px-3 py-2 text-sm bg-white min-w-[200px]"><option value="">-- เลือกนักเรียน --</option></select>
+            <button onclick="openClassroom()" class="ml-auto bg-emerald-600 hover:bg-emerald-700 text-white text-sm px-4 py-2 rounded-lg shadow transition">↗ เปิดใน Classroom</button>
         </div>
 
-        <!-- Split Screen -->
-        <div class="flex gap-4">
-            <!-- Left: Work Viewer -->
-            <div class="split-left bg-white rounded-xl shadow-lg p-4">
-                <div class="flex items-center justify-between mb-4">
-                    <h2 class="text-lg font-bold">📝 งานนักเรียน</h2>
-                    <div class="flex space-x-2">
-                        <select id="student-select" class="border rounded-lg px-3 py-1 text-sm">
-                            <option value="">-- เลือกนักเรียน --</option>
-                        </select>
-                        <button onclick="openClassroom()" class="bg-green-600 text-white px-3 py-1 rounded-lg text-sm hover:bg-green-700">
-                            ↗ เปิดใน Classroom
-                        </button>
-                    </div>
+        <div class="flex flex-col lg:flex-row gap-4">
+            <!-- Left: viewer -->
+            <div class="lg:w-3/5 card p-4">
+                <div class="flex items-center justify-between mb-3">
+                    <h2 class="font-bold text-slate-700">📝 งานนักเรียน</h2>
+                    <span id="submission-state" class="text-xs px-2 py-1 rounded-full bg-slate-100 text-slate-500">-</span>
                 </div>
-                <!-- Iframe for student work -->
-                <div id="work-viewer" class="h-96 bg-gray-100 rounded-lg flex items-center justify-center">
-                    <div class="text-center text-gray-500">
-                        <div class="text-4xl mb-2">📄</div>
+                <div id="work-viewer" class="h-[480px] bg-slate-50 rounded-xl flex items-center justify-center border border-dashed border-slate-300">
+                    <div class="text-center text-slate-400">
+                        <div class="text-5xl mb-3">📄</div>
                         <p>เลือกนักเรียนเพื่อดูงาน</p>
-                        <p class="text-sm">หรือเปิดใน Google Classroom</p>
                     </div>
                 </div>
             </div>
 
-            <!-- Right: Insights & Feedback -->
-            <div class="split-right space-y-4">
-                <!-- Student Info -->
-                <div class="bg-white rounded-xl shadow-lg p-4">
-                    <h3 class="font-bold mb-3">👤 ข้อมูลนักเรียน</h3>
-                    <div class="grid grid-cols-2 gap-3 text-sm">
-                        <div class="bg-blue-50 p-3 rounded-lg">
-                            <div class="text-blue-600 font-medium">คะแนนรวม</div>
-                            <div id="student-total-score" class="text-2xl font-bold">-</div>
-                        </div>
-                        <div class="bg-yellow-50 p-3 rounded-lg">
-                            <div class="text-yellow-600 font-medium">งานค้าง</div>
-                            <div id="student-pending-count" class="text-2xl font-bold">-</div>
-                        </div>
+            <!-- Right: insights -->
+            <div class="lg:w-2/5 space-y-4">
+                <div class="card p-4">
+                    <h3 class="font-bold text-slate-700 mb-3">👤 ข้อมูลนักเรียน</h3>
+                    <div class="grid grid-cols-3 gap-3 text-center">
+                        <div class="bg-brand-50 rounded-xl p-3"><p class="text-xs text-brand-600 mb-1">คะแนนงานนี้</p><p id="student-score" class="text-xl font-bold text-brand-700">-</p></div>
+                        <div class="bg-amber-50 rounded-xl p-3"><p class="text-xs text-amber-600 mb-1">งานค้าง</p><p id="student-pending-count" class="text-xl font-bold text-amber-700">-</p></div>
+                        <div class="bg-emerald-50 rounded-xl p-3"><p class="text-xs text-emerald-600 mb-1">ส่งตรงเวลา</p><p id="student-ontime" class="text-xl font-bold text-emerald-700">-</p></div>
                     </div>
                 </div>
 
-                <!-- Quick Snippets -->
-                <div class="bg-white rounded-xl shadow-lg p-4">
-                    <h3 class="font-bold mb-3">⚡ Quick Snippets</h3>
+                <div class="card p-4">
+                    <h3 class="font-bold text-slate-700 mb-3">⚡ Quick Snippets</h3>
                     <div class="flex flex-wrap gap-2">
-                        <button onclick="copySnippet('ทำได้ดีมาก ลายมือเรียบร้อย')" class="snippet-chip bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm hover:bg-green-200">
-                            ✅ ทำได้ดีมาก
-                        </button>
-                        <button onclick="copySnippet('ส่งไฟล์ผิด กรุณาแนบใหม่')" class="snippet-chip bg-red-100 text-red-800 px-3 py-1 rounded-full text-sm hover:bg-red-200">
-                            ❌ ส่งไฟล์ผิด
-                        </button>
-                        <button onclick="copySnippet('ขาดหัวข้อสรุปผล')" class="snippet-chip bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm hover:bg-yellow-200">
-                            ⚠️ ขาดสรุปผล
-                        </button>
-                        <button onclick="copySnippet('ตรวจคำตอบใหม่อีกครั้ง')" class="snippet-chip bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm hover:bg-blue-200">
-                            🔄 ตรวจใหม่
-                        </button>
+                        <button onclick="copySnippet('ทำได้ดีมาก ลายมือเรียบร้อย')" class="snippet-chip bg-emerald-100 text-emerald-800 px-3 py-1.5 rounded-full text-xs font-medium">✅ ทำได้ดีมาก</button>
+                        <button onclick="copySnippet('ส่งไฟล์ผิด กรุณาแนบใหม่')" class="snippet-chip bg-rose-100 text-rose-800 px-3 py-1.5 rounded-full text-xs font-medium">❌ ส่งไฟล์ผิด</button>
+                        <button onclick="copySnippet('ขาดหัวข้อสรุปผล')" class="snippet-chip bg-amber-100 text-amber-800 px-3 py-1.5 rounded-full text-xs font-medium">⚠️ ขาดสรุปผล</button>
+                        <button onclick="copySnippet('โครงสร้างดี แต่ควรตรวจคำตอบอีกครั้ง')" class="snippet-chip bg-brand-50 text-brand-700 px-3 py-1.5 rounded-full text-xs font-medium">🔄 ตรวจใหม่</button>
                     </div>
                 </div>
 
-                <!-- AI Feedback -->
-                <div class="bg-white rounded-xl shadow-lg p-4">
-                    <h3 class="font-bold mb-3">🤖 AI ช่วยร่าง Feedback</h3>
-                    <textarea id="feedback-text" class="w-full border rounded-lg p-3 text-sm" rows="4" placeholder="พิมพ์หรือกดปุ่มด้านล่างเพื่อให้ AI ช่วยร่าง..."></textarea>
-                    <div class="flex space-x-2 mt-2">
-                        <button onclick="generateFeedback()" class="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-purple-700">
-                            ✨ ร่างอัตโนมัติ
-                        </button>
-                        <button onclick="copyFeedback()" class="bg-gray-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-gray-700">
-                            📋 คัดลอก
-                        </button>
+                <div class="card p-4">
+                    <h3 class="font-bold text-slate-700 mb-3">🤖 AI ช่วยร่าง Feedback</h3>
+                    <textarea id="feedback-text" class="w-full border border-slate-300 rounded-xl p-3 text-sm" rows="4" placeholder="พิมพ์เอง หรือกดปุ่มให้ AI ร่าง..."></textarea>
+                    <div class="flex gap-2 mt-2">
+                        <button onclick="generateFeedback()" class="bg-gradient-to-r from-violet-600 to-brand-500 text-white text-sm px-4 py-2 rounded-lg shadow hover:opacity-90 transition">✨ ร่างอัตโนมัติ</button>
+                        <button onclick="copyFeedback()" class="bg-slate-600 hover:bg-slate-700 text-white text-sm px-4 py-2 rounded-lg transition">📋 คัดลอก</button>
                     </div>
                 </div>
 
-                <!-- Rubric Checklist -->
-                <div class="bg-white rounded-xl shadow-lg p-4">
-                    <h3 class="font-bold mb-3">📋 Rubric Checklist</h3>
-                    <div class="space-y-2">
-                        <label class="flex items-center space-x-2">
-                            <input type="checkbox" class="rounded">
-                            <span class="text-sm">ความถูกต้องของคำตอบ (50%)</span>
-                        </label>
-                        <label class="flex items-center space-x-2">
-                            <input type="checkbox" class="rounded">
-                            <span class="text-sm">ความคิดสร้างสรรค์ (30%)</span>
-                        </label>
-                        <label class="flex items-center space-x-2">
-                            <input type="checkbox" class="rounded">
-                            <span class="text-sm">การจัดรูปแบบ (20%)</span>
-                        </label>
+                <div class="card p-4">
+                    <h3 class="font-bold text-slate-700 mb-3">📋 Rubric Checklist</h3>
+                    <div class="space-y-2 text-sm text-slate-600">
+                        <label class="flex items-center gap-2"><input type="checkbox" class="rounded text-brand-500"> ความถูกต้องของคำตอบ (50%)</label>
+                        <label class="flex items-center gap-2"><input type="checkbox" class="rounded text-brand-500"> ความคิดสร้างสรรค์ (30%)</label>
+                        <label class="flex items-center gap-2"><input type="checkbox" class="rounded text-brand-500"> การจัดรูปแบบ (20%)</label>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Tab 2: Debt Tracker -->
-    <div id="content-tracker" class="container mx-auto px-4 py-6 hidden">
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <!-- Heatmap -->
-            <div class="bg-white rounded-xl shadow-lg p-6">
-                <h2 class="text-lg font-bold mb-4">🗺️ Classroom Heatmap</h2>
-                <div id="heatmap-grid" class="grid grid-cols-4 gap-2">
-                    <!-- Dynamic content -->
+    <!-- ═══ TAB 2: DEBT TRACKER ═══ -->
+    <div id="content-tracker" class="hidden fade-in">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div class="card p-6">
+                <h2 class="font-bold text-slate-700 mb-4">🗺️ Classroom Heatmap — ความเสี่ยงทั้งห้อง</h2>
+                <div id="heatmap-grid" class="grid grid-cols-4 sm:grid-cols-6 gap-2">
+                    <div class="col-span-full text-center text-slate-400 py-8">เลือกวิชาใน Grading Studio เพื่อโหลดข้อมูล</div>
+                </div>
+                <div class="flex gap-4 mt-4 text-xs text-slate-500">
+                    <span class="flex items-center gap-1"><span class="w-3 h-3 rounded risk-green inline-block"></span> ส่งครบ</span>
+                    <span class="flex items-center gap-1"><span class="w-3 h-3 rounded risk-yellow inline-block"></span> ค้าง 1-2 งาน</span>
+                    <span class="flex items-center gap-1"><span class="w-3 h-3 rounded risk-red inline-block"></span> ค้าง 3+ งาน</span>
                 </div>
             </div>
-
-            <!-- Student Slip -->
-            <div class="bg-white rounded-xl shadow-lg p-6">
-                <h2 class="text-lg font-bold mb-4">📄 Student Slip</h2>
-                <div class="bg-gray-50 p-4 rounded-lg">
-                    <p class="text-sm font-medium mb-2">น้องวิชัย ม.4/1</p>
-                    <p class="text-sm text-gray-600 mb-2">งานค้าง 3 ชิ้น:</p>
-                    <ul class="text-sm text-gray-600 list-disc list-inside mb-3">
-                        <li>Lab 1: โครงสร้างควบคุม</li>
-                        <li>Lab 2: ฟังก์ชัน</li>
-                        <li>Lab 3: อาร์เรย์</li>
-                    </ul>
-                    <p class="text-sm font-medium text-red-600">คะแนนเก็บปัจจุบัน 45/100</p>
+            <div class="card p-6">
+                <h2 class="font-bold text-slate-700 mb-4">📄 Student Slip — ใบแจ้งงานค้าง</h2>
+                <div id="slip-content" class="bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm text-slate-600 min-h-[160px]">
+                    เลือกนักเรียนเพื่อสร้าง Slip
                 </div>
-                <button onclick="copySlip()" class="mt-3 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700">
-                    📋 คัดลอกส่ง LINE
-                </button>
+                <button onclick="copySlip()" class="mt-3 bg-brand-600 hover:bg-brand-700 text-white text-sm px-4 py-2 rounded-lg shadow transition">📋 คัดลอกส่ง LINE</button>
             </div>
         </div>
     </div>
 
-    <!-- Tab 3: Gradebook -->
-    <div id="content-gradebook" class="container mx-auto px-4 py-6 hidden">
-        <div class="bg-white rounded-xl shadow-lg p-6">
-            <h2 class="text-lg font-bold mb-4">📊 สมุดคะแนนรวม</h2>
+    <!-- ═══ TAB 3: GRADEBOOK ═══ -->
+    <div id="content-gradebook" class="hidden fade-in">
+        <div class="card p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="font-bold text-slate-700">📊 สมุดคะแนนรวม</h2>
+                <span id="gradebook-course" class="text-sm text-slate-500"></span>
+            </div>
             <div class="overflow-x-auto">
                 <table class="w-full text-sm">
-                    <thead class="bg-gray-100">
-                        <tr>
-                            <th class="px-4 py-2 text-left">ชื่อ</th>
-                            <th class="px-4 py-2">Lab 1</th>
-                            <th class="px-4 py-2">Lab 2</th>
-                            <th class="px-4 py-2">Lab 3</th>
-                            <th class="px-4 py-2">รวม</th>
-                            <th class="px-4 py-2">เกรด</th>
-                        </tr>
-                    </thead>
-                    <tbody id="gradebook-body">
-                        <!-- Dynamic content -->
-                    </tbody>
+                    <thead><tr id="gradebook-head" class="bg-slate-50 text-slate-600"></tr></thead>
+                    <tbody id="gradebook-body" class="divide-y divide-slate-100"></tbody>
                 </table>
             </div>
         </div>
     </div>
 
-    <!-- Tab 4: Export & Settings -->
-    <div id="content-export" class="container mx-auto px-4 py-6 hidden">
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <!-- Grading Scale -->
-            <div class="bg-white rounded-xl shadow-lg p-6">
-                <h2 class="text-lg font-bold mb-4">⚙️ ตั้งค่าเกณฑ์เกรด</h2>
-                <div class="space-y-3">
-                    <div class="flex items-center space-x-3">
-                        <input type="number" value="80" class="border rounded px-3 py-1 w-20">
-                        <span class="text-sm">คะแนนขึ้นไป = เกรด 4</span>
-                    </div>
-                    <div class="flex items-center space-x-3">
-                        <input type="number" value="75" class="border rounded px-3 py-1 w-20">
-                        <span class="text-sm">คะแนนขึ้นไป = เกรด 3.5</span>
-                    </div>
-                    <div class="flex items-center space-x-3">
-                        <input type="number" value="70" class="border rounded px-3 py-1 w-20">
-                        <span class="text-sm">คะแนนขึ้นไป = เกรด 3</span>
-                    </div>
-                    <div class="flex items-center space-x-3">
-                        <input type="number" value="65" class="border rounded px-3 py-1 w-20">
-                        <span class="text-sm">คะแนนขึ้นไป = เกรด 2.5</span>
-                    </div>
-                    <div class="flex items-center space-x-3">
-                        <input type="number" value="60" class="border rounded px-3 py-1 w-20">
-                        <span class="text-sm">คะแนนขึ้นไป = เกรด 2</span>
-                    </div>
-                    <div class="flex items-center space-x-3">
-                        <input type="number" value="55" class="border rounded px-3 py-1 w-20">
-                        <span class="text-sm">คะแนนขึ้นไป = เกรด 1.5</span>
-                    </div>
-                    <div class="flex items-center space-x-3">
-                        <input type="number" value="50" class="border rounded px-3 py-1 w-20">
-                        <span class="text-sm">คะแนนขึ้นไป = เกรด 1</span>
-                    </div>
-                    <div class="flex items-center space-x-3">
-                        <span class="text-sm text-red-600">ต่ำกว่า 50 = เกรด 0</span>
-                    </div>
+    <!-- ═══ TAB 4: EXPORT & SETTINGS ═══ -->
+    <div id="content-export" class="hidden fade-in">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div class="card p-6">
+                <h2 class="font-bold text-slate-700 mb-4">⚙️ เกณฑ์ตัดเกรด</h2>
+                <div id="grade-scale" class="space-y-2.5 text-sm text-slate-600">
+                    <div class="flex items-center gap-3"><input type="number" value="80" class="border-slate-300 border rounded-lg px-3 py-1.5 w-24" data-grade="4"><span>คะแนนขึ้นไป = <b class="text-emerald-600">เกรด 4</b></span></div>
+                    <div class="flex items-center gap-3"><input type="number" value="75" class="border-slate-300 border rounded-lg px-3 py-1.5 w-24" data-grade="3.5"><span>คะแนนขึ้นไป = <b class="text-emerald-500">เกรด 3.5</b></span></div>
+                    <div class="flex items-center gap-3"><input type="number" value="70" class="border-slate-300 border rounded-lg px-3 py-1.5 w-24" data-grade="3"><span>คะแนนขึ้นไป = <b class="text-brand-600">เกรด 3</b></span></div>
+                    <div class="flex items-center gap-3"><input type="number" value="65" class="border-slate-300 border rounded-lg px-3 py-1.5 w-24" data-grade="2.5"><span>คะแนนขึ้นไป = <b class="text-brand-500">เกรด 2.5</b></span></div>
+                    <div class="flex items-center gap-3"><input type="number" value="60" class="border-slate-300 border rounded-lg px-3 py-1.5 w-24" data-grade="2"><span>คะแนนขึ้นไป = <b class="text-amber-600">เกรด 2</b></span></div>
+                    <div class="flex items-center gap-3"><input type="number" value="55" class="border-slate-300 border rounded-lg px-3 py-1.5 w-24" data-grade="1.5"><span>คะแนนขึ้นไป = <b class="text-amber-500">เกรด 1.5</b></span></div>
+                    <div class="flex items-center gap-3"><input type="number" value="50" class="border-slate-300 border rounded-lg px-3 py-1.5 w-24" data-grade="1"><span>คะแนนขึ้นไป = <b class="text-rose-500">เกรด 1</b></span></div>
+                    <div class="flex items-center gap-3"><span class="text-rose-600 font-medium">ต่ำกว่า 50 = เกรด 0</span></div>
                 </div>
-                <button class="mt-4 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700">
-                    💾 บันทึกการตั้งค่า
-                </button>
+                <button onclick="saveGradeScale()" class="mt-4 bg-brand-600 hover:bg-brand-700 text-white text-sm px-4 py-2 rounded-lg shadow transition">💾 บันทึกการตั้งค่า</button>
             </div>
-
-            <!-- Export -->
-            <div class="bg-white rounded-xl shadow-lg p-6">
-                <h2 class="text-lg font-bold mb-4">📤 ส่งออกข้อมูล</h2>
+            <div class="card p-6">
+                <h2 class="font-bold text-slate-700 mb-4">📤 ส่งออกข้อมูล</h2>
                 <div class="space-y-3">
-                    <button class="w-full bg-green-600 text-white px-4 py-3 rounded-lg hover:bg-green-700 flex items-center justify-center space-x-2">
-                        <span>📊</span>
-                        <span>ส่งออกเป็น Excel (.xlsx)</span>
-                    </button>
-                    <button class="w-full bg-red-600 text-white px-4 py-3 rounded-lg hover:bg-red-700 flex items-center justify-center space-x-2">
-                        <span>📄</span>
-                        <span>ส่งออกเป็น PDF (ปพ.5)</span>
-                    </button>
-                    <button class="w-full bg-blue-600 text-white px-4 py-3 rounded-lg hover:bg-blue-700 flex items-center justify-center space-x-2">
-                        <span>📋</span>
-                        <span>คัดลอกตารางคะแนน</span>
-                    </button>
+                    <button onclick="exportExcel()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-3 rounded-xl shadow flex items-center justify-center gap-2 transition">📊 ส่งออกเป็น Excel (.xlsx)</button>
+                    <button onclick="exportPdf()" class="w-full bg-rose-600 hover:bg-rose-700 text-white px-4 py-3 rounded-xl shadow flex items-center justify-center gap-2 transition">📄 ส่งออกเป็น PDF (ปพ.5)</button>
+                    <button onclick="exportTable()" class="w-full bg-brand-600 hover:bg-brand-700 text-white px-4 py-3 rounded-xl shadow flex items-center justify-center gap-2 transition">📋 คัดลอกตารางคะแนน</button>
                 </div>
             </div>
         </div>
     </div>
 </main>
 
-<!-- Toast Notification -->
-<div id="toast" class="fixed bottom-4 right-4 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg hidden z-50">
-    ✅ คัดลอกแล้ว!
-</div>
+<!-- Toast -->
+<div id="toast" class="fixed bottom-6 right-6 bg-slate-800 text-white px-5 py-3 rounded-xl shadow-xl hidden z-50 text-sm"></div>
 
-<script>
-    // Google Auth variables
-    let accessToken = null;
-    let userProfile = null;
-    let classroomCourses = [];
-
-    // Initialize Google Identity Services
-    function initGoogleAuth() {
-        google.accounts.id.initialize({
-            client_id: '1043421437059-of9k7vt7hft5lf9vb1ffjlis3q6r4bd2.apps.googleusercontent.com',
-            callback: handleGoogleResponse,
-            auto_select: false,
-        });
-    }
-
-    // Handle Google Login
-    function handleGoogleLogin() {
-        google.accounts.oauth2.initTokenClient({
-            client_id: '1043421437059-of9k7vt7hft5lf9vb1ffjlis3q6r4bd2.apps.googleusercontent.com',
-            scope: 'https://www.googleapis.com/auth/classroom.courses.readonly https://www.googleapis.com/auth/classroom.rosters.readonly https://www.googleapis.com/auth/classroom.coursework.students.readonly https://www.googleapis.com/auth/classroom.student-submissions.students.readonly https://www.googleapis.com/auth/drive.readonly',
-            callback: (response) => {
-                if (response.access_token) {
-                    accessToken = response.access_token;
-                    loadUserProfile();
-                    loadClassroomData();
-                }
-            },
-        }).requestAccessToken();
-    }
-
-    // Handle Google Response
-    function handleGoogleResponse(response) {
-        // Handle ID token if needed
-    }
-
-    // Load User Profile
-    async function loadUserProfile() {
-        try {
-            const response = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
-                headers: { 'Authorization': `Bearer ${accessToken}` }
-            });
-            userProfile = await response.json();
-            
-            document.getElementById('user-photo').src = userProfile.picture || '';
-            document.getElementById('user-name').textContent = userProfile.name || '';
-            document.getElementById('user-info').classList.remove('hidden');
-        } catch (error) {
-            console.error('Error loading profile:', error);
-        }
-    }
-
-    // Load Classroom Data
-    async function loadClassroomData() {
-        try {
-            // Show main content
-            document.getElementById('login-modal').classList.add('hidden');
-            document.getElementById('main-content').classList.remove('hidden');
-            document.getElementById('connection-status').classList.add('hidden');
-
-            // Load courses (only owned by this teacher and currently ACTIVE)
-            const response = await fetch('https://classroom.googleapis.com/v1/courses?pageSize=100&courseStates=ACTIVE&teacherId=me', {
-                headers: { 'Authorization': `Bearer ${accessToken}` }
-            });
-            const data = await response.json();
-            classroomCourses = data.courses || [];
-
-            // Populate course select
-            const courseSelect = document.getElementById('course-select');
-            courseSelect.innerHTML = '<option value="">-- เลือกวิชา --</option>';
-            classroomCourses.forEach(course => {
-                const option = document.createElement('option');
-                option.value = course.id;
-                option.textContent = course.name + (course.section ? ` (${course.section})` : '');
-                courseSelect.appendChild(option);
-            });
-
-            // Load heatmap
-            loadHeatmap();
-            
-            // Load gradebook
-            loadGradebook();
-
-        } catch (error) {
-            console.error('Error loading classroom data:', error);
-            showToast('❌ ไม่สามารถโหลดข้อมูล Classroom ได้');
-        }
-    }
-
-    // Load Assignments when course is selected
-    document.getElementById('course-select').addEventListener('change', async function() {
-        const courseId = this.value;
-        const assignmentSelect = document.getElementById('assignment-select');
-        
-        if (!courseId) {
-            assignmentSelect.innerHTML = '<option value="">-- เลือกงาน --</option>';
-            return;
-        }
-        
-        assignmentSelect.innerHTML = '<option value="">กำลังโหลด...</option>';
-        
-        try {
-            const response = await fetch(`https://classroom.googleapis.com/v1/courses/${courseId}/courseWork?pageSize=100`, {
-                headers: { 'Authorization': `Bearer ${accessToken}` }
-            });
-            const data = await response.json();
-            const courseWork = data.courseWork || [];
-            
-            assignmentSelect.innerHTML = '<option value="">-- เลือกงาน --</option>';
-            courseWork.forEach(work => {
-                const option = document.createElement('option');
-                option.value = work.id;
-                option.textContent = work.title + (work.maxPoints ? ` (${work.maxPoints} คะแนน)` : '');
-                assignmentSelect.appendChild(option);
-            });
-            
-            if (courseWork.length === 0) {
-                assignmentSelect.innerHTML = '<option value="">ไม่มีงานในวิชานี้</option>';
-            }
-            
-            // Also load students for this course
-            loadStudents(courseId);
-        } catch (error) {
-            console.error('Error loading assignments:', error);
-            assignmentSelect.innerHTML = '<option value="">โหลดไม่สำเร็จ</option>';
-        }
-    });
-
-    // Load Students when course is selected
-    async function loadStudents(courseId) {
-        const studentSelect = document.getElementById('student-select');
-        
-        if (!courseId) {
-            studentSelect.innerHTML = '<option value="">-- เลือกนักเรียน --</option>';
-            return;
-        }
-        
-        studentSelect.innerHTML = '<option value="">กำลังโหลด...</option>';
-        
-        try {
-            const response = await fetch(`https://classroom.googleapis.com/v1/courses/${courseId}/students?pageSize=100`, {
-                headers: { 'Authorization': `Bearer ${accessToken}` }
-            });
-            const data = await response.json();
-            const students = data.students || [];
-            
-            studentSelect.innerHTML = '<option value="">-- เลือกนักเรียน --</option>';
-            students.forEach(student => {
-                const option = document.createElement('option');
-                option.value = student.userId;
-                option.textContent = student.profile.name.fullName;
-                studentSelect.appendChild(option);
-            });
-            
-            if (students.length === 0) {
-                studentSelect.innerHTML = '<option value="">ไม่มีนักเรียนในวิชานี้</option>';
-            }
-        } catch (error) {
-            console.error('Error loading students:', error);
-            studentSelect.innerHTML = '<option value="">โหลดไม่สำเร็จ</option>';
-        }
-    }
-
-    // Load Submissions when assignment is selected
-    async function loadSubmissions(courseId, courseWorkId) {
-        const studentSelect = document.getElementById('student-select');
-        
-        if (!courseId || !courseWorkId) {
-            return;
-        }
-        
-        try {
-            const response = await fetch(`https://classroom.googleapis.com/v1/courses/${courseId}/courseWork/${courseWorkId}/studentSubmissions?pageSize=100`, {
-                headers: { 'Authorization': `Bearer ${accessToken}` }
-            });
-            const data = await response.json();
-            const submissions = data.studentSubmissions || [];
-            console.log('Submissions loaded:', submissions.length);
-            
-            // Update student info panel
-            submissions.forEach(sub => {
-                if (sub.assignedGrade || sub.draftGrade) {
-                    console.log('Student submission with grade:', sub.userId, sub.assignedGrade || sub.draftGrade);
-                }
-            });
-        } catch (error) {
-            console.error('Error loading submissions:', error);
-        }
-    }
-
-    // Load Heatmap
-    async function loadHeatmap() {
-        const heatmapGrid = document.getElementById('heatmap-grid');
-        heatmapGrid.innerHTML = '<div class="col-span-4 text-center text-gray-500">กำลังโหลด...</div>';
-        
-        // This will be populated with real data
-        heatmapGrid.innerHTML = '<div class="col-span-4 text-center text-green-600">✅ เชื่อมต่อสำเร็จ</div>';
-    }
-
-    // Load Gradebook
-    async function loadGradebook() {
-        const gradebookBody = document.getElementById('gradebook-body');
-        gradebookBody.innerHTML = '<tr><td colspan="6" class="text-center text-gray-500 py-4">กำลังโหลด...</td></tr>';
-    }
-
-    // Handle Logout
-    function handleGoogleLogout() {
-        if (accessToken) {
-            google.accounts.oauth2.revoke(accessToken);
-        }
-        accessToken = null;
-        userProfile = null;
-        location.reload();
-    }
-
-    // Tab switching
-    function switchTab(tabName) {
-        document.querySelectorAll('[id^="content-"]').forEach(el => el.classList.add('hidden'));
-        document.getElementById('content-' + tabName).classList.remove('hidden');
-        
-        document.querySelectorAll('[id^="tab-"]').forEach(el => {
-            el.classList.remove('tab-active');
-            el.classList.add('tab-inactive');
-        });
-        const activeTab = document.getElementById('tab-' + tabName);
-        activeTab.classList.remove('tab-inactive');
-        activeTab.classList.add('tab-active');
-    }
-
-    // Copy functions
-    function copySnippet(text) {
-        navigator.clipboard.writeText(text);
-        showToast('✅ คัดลอก: ' + text);
-    }
-
-    function copyFeedback() {
-        const text = document.getElementById('feedback-text').value;
-        navigator.clipboard.writeText(text);
-        showToast('✅ คัดลอก Feedback แล้ว');
-    }
-
-    function copySlip() {
-        const slip = `น้องวิชัย ม.4/1 | งานค้าง 3 ชิ้น: (1) Lab 1 (2) Lab 2 (3) Lab 3 | คะแนนเก็บปัจจุบัน 45/100`;
-        navigator.clipboard.writeText(slip);
-        showToast('✅ คัดลอก Student Slip แล้ว');
-    }
-
-    function generateFeedback() {
-        const feedback = "งานที่ส่งมาทำได้ดีในส่วนของการเขียนโครงสร้าง แต่ยังมีข้อผิดพลาดในส่วนของเงื่อนไข ลองตรวจสอบเงื่อนไข if-else อีกครั้งครับ";
-        document.getElementById('feedback-text').value = feedback;
-        showToast('✨ ร่าง Feedback แล้ว');
-    }
-
-    function openClassroom() {
-        window.open('https://classroom.google.com', '_blank');
-    }
-
-    function showToast(message) {
-        const toast = document.getElementById('toast');
-        toast.textContent = message;
-        toast.classList.remove('hidden');
-        setTimeout(() => toast.classList.add('hidden'), 3000);
-    }
-
-    // Initialize on load
-    window.onload = function() {
-        initGoogleAuth();
-    };
-</script>
-
+<script src="js/app.js"></script>
 </body>
 </html>

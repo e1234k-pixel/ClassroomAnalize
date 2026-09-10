@@ -392,8 +392,8 @@
             document.getElementById('main-content').classList.remove('hidden');
             document.getElementById('connection-status').classList.add('hidden');
 
-            // Load courses
-            const response = await fetch('https://classroom.googleapis.com/v1/courses?pageSize=100', {
+            // Load courses (only owned by this teacher and currently ACTIVE)
+            const response = await fetch('https://classroom.googleapis.com/v1/courses?pageSize=100&courseStates=ACTIVE&teacherId=me', {
                 headers: { 'Authorization': `Bearer ${accessToken}` }
             });
             const data = await response.json();

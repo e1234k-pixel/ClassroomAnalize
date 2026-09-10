@@ -421,6 +421,42 @@
         }
     }
 
+    // Load Assignments when course is selected
+    document.getElementById('course-select').addEventListener('change', async function() {
+        const courseId = this.value;
+        const assignmentSelect = document.getElementById('assignment-select');
+        
+        if (!courseId) {
+            assignmentSelect.innerHTML = '<option value="">-- เลือกงาน --</option>';
+            return;
+        }
+        
+        assignmentSelect.innerHTML = '<option value="">กำลังโหลด...</option>';
+        
+        try {
+            const response = await fetch(`https://classroom.googleapis.com/v1/courses/${courseId}/courseWork?pageSize=100`, {
+                headers: { 'Authorization': `Bearer ${accessToken}` }
+            });
+            const data = await response.json();
+            const courseWork = data.courseWork || [];
+            
+            assignmentSelect.innerHTML = '<option value="">-- เลือกงาน --</option>';
+            courseWork.forEach(work => {
+                const option = document.createElement('option');
+                option.value = work.id;
+                option.textContent = work.title + (work.maxPoints ? ` (${work.maxPoints} คะแนน)` : '');
+                assignmentSelect.appendChild(option);
+            });
+            
+            if (courseWork.length === 0) {
+                assignmentSelect.innerHTML = '<option value="">ไม่มีงานในวิชานี้</option>';
+            }
+        } catch (error) {
+            console.error('Error loading assignments:', error);
+            assignmentSelect.innerHTML = '<option value="">โหลดไม่สำเร็จ</option>';
+        }
+    });
+
     // Load Heatmap
     async function loadHeatmap() {
         const heatmapGrid = document.getElementById('heatmap-grid');

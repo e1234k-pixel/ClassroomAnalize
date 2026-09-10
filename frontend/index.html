@@ -451,11 +451,76 @@
             if (courseWork.length === 0) {
                 assignmentSelect.innerHTML = '<option value="">ไม่มีงานในวิชานี้</option>';
             }
+            
+            // Also load students for this course
+            loadStudents(courseId);
         } catch (error) {
             console.error('Error loading assignments:', error);
             assignmentSelect.innerHTML = '<option value="">โหลดไม่สำเร็จ</option>';
         }
     });
+
+    // Load Students when course is selected
+    async function loadStudents(courseId) {
+        const studentSelect = document.getElementById('student-select');
+        
+        if (!courseId) {
+            studentSelect.innerHTML = '<option value="">-- เลือกนักเรียน --</option>';
+            return;
+        }
+        
+        studentSelect.innerHTML = '<option value="">กำลังโหลด...</option>';
+        
+        try {
+            const response = await fetch(`https://classroom.googleapis.com/v1/courses/${courseId}/students?pageSize=100`, {
+                headers: { 'Authorization': `Bearer ${accessToken}` }
+            });
+            const data = await response.json();
+            const students = data.students || [];
+            
+            studentSelect.innerHTML = '<option value="">-- เลือกนักเรียน --</option>';
+            students.forEach(student => {
+                const option = document.createElement('option');
+                option.value = student.userId;
+                option.textContent = student.profile.name.fullName;
+                studentSelect.appendChild(option);
+            });
+            
+            if (students.length === 0) {
+                studentSelect.innerHTML = '<option value="">ไม่มีนักเรียนในวิชานี้</option>';
+            }
+        } catch (error) {
+            console.error('Error loading students:', error);
+            studentSelect.innerHTML = '<option value="">โหลดไม่สำเร็จ</option>';
+        }
+    }
+
+    // Load Submissions when assignment is selected
+    async function loadSubmissions(courseId, courseWorkId) {
+        const studentSelect = document.getElementById('student-select');
+        
+        if (!courseId || !courseWorkId) {
+            return;
+        }
+        
+        try {
+            const response = await fetch(`https://classroom.googleapis.com/v1/courses/${courseId}/courseWork/${courseWorkId}/studentSubmissions?pageSize=100`, {
+                headers: { 'Authorization': `Bearer ${accessToken}` }
+            });
+            const data = await response.json();
+            const submissions = data.studentSubmissions || [];
+            console.log('Submissions loaded:', submissions.length);
+            
+            // Update student info panel
+            submissions.forEach(sub => {
+                if (sub.assignedGrade || sub.draftGrade) {
+                    console.log('Student submission with grade:', sub.userId, sub.assignedGrade || sub.draftGrade);
+                }
+            });
+        } catch (error) {
+            console.error('Error loading submissions:', error);
+        }
+    }
 
     // Load Heatmap
     async function loadHeatmap() {

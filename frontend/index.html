@@ -38,6 +38,9 @@
         @keyframes fadeIn { from { opacity:0; transform:translateY(6px);} to { opacity:1; transform:none;} }
         ::-webkit-scrollbar { height:8px; width:8px; }
         ::-webkit-scrollbar-thumb { background:#c7d2fe; border-radius:4px; }
+        @keyframes bounce { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+        .pet-pop { transition: transform .2s; }
+        .pet-pop:hover { transform: scale(1.3) rotate(-8deg); }
     </style>
 </head>
 <body class="bg-slate-100 min-h-screen">

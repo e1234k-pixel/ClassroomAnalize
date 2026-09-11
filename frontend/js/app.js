@@ -362,11 +362,11 @@ function computeGamification(allSubs) {
 }
 
 const LEVELS = [
-    { min: 0, name: 'ดาวรุ่ง', icon: '⭐' },
-    { min: 200, name: 'นักสำรวจ', icon: '🧭' },
-    { min: 500, name: 'นักผจญภัย', icon: '🗺️' },
-    { min: 900, name: 'นักปราชญ์', icon: '📚' },
-    { min: 1400, name: 'ตำนานห้องเรียน', icon: '🏆' },
+    { min: 0, name: 'ดาวรุ่ง', icon: '⭐', pet: '🐣', petName: 'ลูกไก่น้อย' },
+    { min: 200, name: 'นักสำรวจ', icon: '🧭', pet: '🐥', petName: 'สำรวจไก่' },
+    { min: 500, name: 'นักผจญภัย', icon: '🗺️', pet: '🐺', petName: 'หมาป่าผจญภัย' },
+    { min: 900, name: 'นักปราชญ์', icon: '📚', pet: '🦉', petName: 'นกฮูกปราชญ์' },
+    { min: 1400, name: 'ตำนานห้องเรียน', icon: '🏆', pet: '🐉', petName: 'มังกรตำนาน' },
 ];
 function levelOf(xp) {
     let lv = LEVELS[0];
@@ -393,9 +393,10 @@ async function buildQuests() {
         const lv = levelOf(d.xp);
         const medal = ['🥇', '🥈', '🥉'][i] || `${i + 1}`;
         const badges = d.badges.map(b => `<span title="${b.name}">${b.icon}</span>`).join(' ');
+        const pet = d.xp >= 1400 ? '🐉' : lv.pet || lv.icon;
         return `<tr class="hover:bg-slate-50">
             <td class="px-4 py-2.5 text-center text-lg">${medal}</td>
-            <td class="px-4 py-2.5 font-medium text-slate-700">${d.name}</td>
+            <td class="px-4 py-2.5 font-medium text-slate-700"><span class="text-xl mr-1">${pet}</span>${d.name}</td>
             <td class="px-4 py-2.5 text-center">${lv.icon} <b>${lv.name}</b></td>
             <td class="px-4 py-2.5 text-center font-bold text-brand-600">${d.xp} XP</td>
             <td class="px-4 py-2.5 text-center">${d.streak > 0 ? `🔥 ${d.streak}` : '-'}</td>
@@ -434,11 +435,12 @@ function showQuestDetail() {
     const progress = next ? Math.min(100, Math.round((d.xp - lv.min) / (next.min - lv.min) * 100)) : 100;
     el.innerHTML = `
         <div class="flex items-center gap-4 mb-3">
-            <div class="text-4xl">${lv.icon}</div>
+            <div class="text-5xl" style="animation: bounce 2s infinite">${d.xp >= 1400 ? '🐉' : lv.pet || lv.icon}</div>
             <div class="flex-1">
                 <p class="font-bold text-slate-700">${d.name} — ${lv.name}</p>
+                <p class="text-xs text-violet-600 mb-1">สัตว์เลี้ยงคู่หู: ${lv.petName || ''} ${d.xp >= 1400 ? '🐉' : lv.pet || ''}</p>
                 <div class="h-2.5 bg-slate-200 rounded-full mt-1 overflow-hidden"><div class="h-full bg-gradient-to-r from-brand-500 to-indigo-500" style="width:${progress}%"></div></div>
-                <p class="text-xs text-slate-500 mt-1">${d.xp} XP ${next ? `• อีก ${next.min - d.xp} XP ถึง ${next.name}` : '• ระดับสูงสุด!'}</p>
+                <p class="text-xs text-slate-500 mt-1">${d.xp} XP ${next ? `• อีก ${next.min - d.xp} XP ถึง ${next.name} (ปลดล็อก ${next.petName || next.name})` : '• ระดับสูงสุด!'}</p>
             </div>
         </div>
         <div class="grid grid-cols-3 gap-2 text-center text-sm mb-3">

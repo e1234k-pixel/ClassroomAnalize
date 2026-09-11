@@ -592,15 +592,20 @@ async function buildQuests() {
     const rows = Object.entries(data)
         .map(([uid, d]) => ({ uid, ...d }))
         .sort((a, b) => b.xp - a.xp);
+    rows.forEach(r => { r.uid = r.uid; });
 
     document.getElementById('leaderboard-body').innerHTML = rows.slice(0, 10).map((d, i) => {
         const lv = levelOf(d.xp);
         const medal = ['🥇', '🥈', '🥉'][i] || `${i + 1}`;
         const badges = d.badges.map(b => `<span title="${b.name}">${b.icon}</span>`).join(' ');
         const pet = d.xp >= 1400 ? '🐉' : lv.pet || lv.icon;
+        const myPets = getPets(d.uid);
+        const petRow = myPets.length
+            ? myPets.slice(0, 4).map(p => `<span class="text-lg" title="${p.name}">${p.icon}</span>`).join('') + (myPets.length > 4 ? `<span class="text-xs text-slate-400">+${myPets.length - 4}</span>` : '')
+            : '';
         return `<tr class="hover:bg-slate-50">
             <td class="px-4 py-2.5 text-center text-lg">${medal}</td>
-            <td class="px-4 py-2.5 font-medium text-slate-700"><span class="text-xl mr-1">${pet}</span>${d.name}</td>
+            <td class="px-4 py-2.5 font-medium text-slate-700"><span class="text-xl mr-1">${pet}</span>${d.name}${petRow ? `<span class="ml-2">${petRow}</span>` : ''}</td>
             <td class="px-4 py-2.5 text-center">${lv.icon} <b>${lv.name}</b></td>
             <td class="px-4 py-2.5 text-center font-bold text-brand-600">${d.xp} XP</td>
             <td class="px-4 py-2.5 text-center">${d.streak > 0 ? `🔥 ${d.streak}` : '-'}</td>
@@ -658,7 +663,13 @@ function showQuestDetail() {
             <div class="bg-rose-50 rounded-lg p-2">❌ ยังไม่ส่ง<br><b>${d.missing}</b></div>
         </div>
         <p class="text-sm text-slate-600 mb-1">🔥 Streak: <b>${d.streak}</b> งานต่อเนื่อง</p>
-        <div class="flex flex-wrap gap-2">${d.badges.map(b => `<span class="bg-violet-100 text-violet-800 text-xs px-2 py-1 rounded-full">${b.icon} ${b.name}</span>`).join('') || '<span class="text-xs text-slate-400">ยังไม่มีป้าย — ส่งงานตรงเวลาเพื่อสะสมป้ายแรก!</span>'}</div>`;
+        <div class="flex flex-wrap gap-2 mb-3">${d.badges.map(b => `<span class="bg-violet-100 text-violet-800 text-xs px-2 py-1 rounded-full">${b.icon} ${b.name}</span>`).join('') || '<span class="text-xs text-slate-400">ยังไม่มีป้าย — ส่งงานตรงเวลาเพื่อสะสมป้ายแรก!</span>'}</div>
+        <div class="bg-slate-50 border border-slate-200 rounded-xl p-3">
+            <p class="text-xs font-semibold text-slate-500 mb-1.5">🐾 คู่หูของฉัน (${getPets(uid).length} ตัว):</p>
+            ${getPets(uid).length
+                ? `<div class="flex flex-wrap gap-2">${getPets(uid).map(p => `<span class="relative inline-block text-2xl pet-pop cursor-pointer bg-white border border-slate-200 rounded-lg px-2 py-1.5" title="${p.name}${p.stars > 1 ? ` ⭐×${p.stars}` : ''}" onclick="petSay('${p.name}','${p.icon}')">${p.icon}${p.stars > 1 ? `<span class="absolute -bottom-1 -right-1 text-[10px]">⭐${p.stars}</span>` : ''}</span>`).join('')}</div>`
+                : '<p class="text-xs text-slate-400">ยังไม่มีคู่หู — ไปร้านคู่หูเปิดไข่แรกได้เลย! 🥚</p>'}
+        </div>`;
 }
 
 /* ─── Export ─── */

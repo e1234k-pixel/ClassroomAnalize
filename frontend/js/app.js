@@ -14,6 +14,7 @@ let accessToken = null;
 let courses = [], students = [], assignments = [], submissions = [];
 let currentCourseId = null, currentAssignmentId = null;
 let userRole = null; // 'teacher' | 'student'
+let _centralState = null; // student's own state from Worker API
 
 /* ─── Auth ─── */
 // role from URL (?role=teacher / ?role=student) — overrides auto-detect
@@ -115,19 +116,54 @@ async function buildStudentView() {
         });
         document.getElementById('stat-courses').textContent = myCourses.length;
 
-        // own XP from central API
-        const me = userProfile?.id || 'me';
+        // auto-select first course so leaderboard/quests compute immediately
+        if (myCourses.length) {
+            sel.value = myCourses[0].id;
+            await onCourseChange();
+        }
+
+        // own identity from Classroom (students.list of my course includes my profile)
+        const me = students.find(s => s.profile?.id)?.profile || userProfile;
+        const myId = students[0]?.userId || me?.id || 'me';
+
+        // own XP + pets from central API
         try {
-            const s = await apiGet(`/api/state/${encodeURIComponent(me)}`);
+            const s = await apiGet(`/api/state/${encodeURIComponent(myId)}`);
             if (s.ok) {
-                document.getElementById('student-total-score').textContent = s.spendable;
-                document.getElementById('student-pending-count').textContent = s.pets.length;
+                _centralState = s;
+                // pre-select self in quest panel & show own card
+                const qsel = document.getElementById('quest-student-select');
+                if (qsel && _gamified && _gamified[myId]) qsel.value = myId;
+                showQuestDetailFor(myId, s);
             }
         } catch (e) { console.warn('central state unavailable for student', e); }
     } catch (e) {
         console.error(e);
         toast('❌ โหลดวิชาของนักเรียนไม่สำเร็จ');
     }
+}
+
+/* Student's own summary card (independent of teacher-side _gamified) */
+function showQuestDetailFor(uid, state) {
+    const el = document.getElementById('quest-detail');
+    if (!el) return;
+    const xp = state.totalXp || 0, spendable = state.spendable ?? xp;
+    const lv = levelOf(xp);
+    const next = LEVELS.find(l => l.min > xp);
+    const progress = next ? Math.min(100, Math.round((xp - lv.min) / (next.min - lv.min) * 100)) : 100;
+    const pets = state.pets || [];
+    el.innerHTML = `
+        <div class="flex items-center gap-4 mb-3">
+            <div class="text-5xl" style="animation: bounce 2s infinite">${pets.length ? petImg(pets[pets.length - 1], 'w-16 h-16') : '🥚'}</div>
+            <div class="flex-1">
+                <p class="font-bold text-slate-700">${userProfile?.name || 'ฉัน'} — ${lv.name}</p>
+                <div class="h-2.5 bg-slate-200 rounded-full mt-1 overflow-hidden"><div class="h-full bg-gradient-to-r from-brand-500 to-indigo-500" style="width:${progress}%"></div></div>
+                <p class="text-xs text-slate-500 mt-1">${xp} XP ${next ? `• อีก ${next.min - xp} XP ถึง ${next.name}` : '• ระดับสูงสุด!'}</p>
+            </div>
+        </div>
+        <p class="text-sm text-slate-600">🪙 ใช้ได้: <b>${spendable} XP</b></p>
+        <p class="text-sm text-slate-600 mb-2">🐾 คู่หู: ${pets.length ? pets.map(p => petImg(p, 'w-9 h-9 bg-white border border-slate-200')).join('') : 'ยังไม่มี — เปิดไข่แรกได้เลย! 🥚'}</p>
+        <p class="text-xs text-slate-400">💡 เปิดไข่/ซื้อของที่ร้านคู่หูด้านล่างได้เลย</p>`;
 }
 
 function setUserProfile(photo, name) {

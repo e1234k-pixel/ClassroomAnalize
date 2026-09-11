@@ -368,24 +368,27 @@ const SHOP_ITEMS = [
     { id: 'streak_shield', name: 'โล่ป้องกัน Streak', icon: '🛡️', cost: 250, desc: 'คุ้มครอง Streak 1 ครั้งเมื่อพลาดส่ง' },
 ];
 
-/* Pet catalog: common/rare pools + the 5 level pets */
+/* Pet catalog: common/rare pools with real artwork */
 const PET_CATALOG = {
     common: [
-        { id: 'cat', name: 'ลูกแมวขี้อ้อน', icon: '🐱' },
-        { id: 'bunny', name: 'กระต่ายน้อย', icon: '🐰' },
-        { id: 'panda', name: 'แพนด้าขี้เซา', icon: '🐼' },
-        { id: 'fox', name: 'จิ้งจอกส้ม', icon: '🦊' },
-        { id: 'penguin', name: 'เพนกวินจอมป่วน', icon: '🐧' },
-        { id: 'turtle', name: 'เต่านักเรียน', icon: '🐢' },
+        { id: 'cat', name: 'ลูกแมวขี้อ้อน', icon: '🐱', img: 'img/pets/cat.png' },
+        { id: 'bunny', name: 'กระต่ายน้อย', icon: '🐰', img: 'img/pets/bunny.png' },
+        { id: 'panda', name: 'แพนด้าขี้เซา', icon: '🐼', img: 'img/pets/panda.png' },
+        { id: 'fox', name: 'จิ้งจอกส้ม', icon: '🦊', img: 'img/pets/fox.png' },
+        { id: 'penguin', name: 'เพนกวินจอมป่วน', icon: '🐧', img: 'img/pets/penguin.png' },
+        { id: 'turtle', name: 'เต่านักเรียน', icon: '🐢', img: 'img/pets/turtle.png' },
     ],
     rare: [
-        { id: 'unicorn', name: 'ยูนิคอร์นสายรุ้ง', icon: '🦄' },
-        { id: 'tiger', name: 'เสือขาวผู้กล้า', icon: '🐯' },
-        { id: 'koala', name: 'โคอาล่านักฝัน', icon: '🐨' },
-        { id: 'eagle', name: 'อินทรีสายฟ้า', icon: '🦅' },
-        { id: 'dolphin', name: 'โลมาประดับดาว', icon: '🐬' },
+        { id: 'unicorn', name: 'ยูนิคอร์นสายรุ้ง', icon: '🦄', img: 'img/pets/unicorn.png' },
+        { id: 'tiger', name: 'เสือขาวผู้กล้า', icon: '🐯', img: 'img/pets/tiger.png' },
+        { id: 'koala', name: 'โคอาล่านักฝัน', icon: '🐨', img: 'img/pets/koala.png' },
+        { id: 'eagle', name: 'อินทรีสายฟ้า', icon: '🦅', img: 'img/pets/eagle.png' },
+        { id: 'dolphin', name: 'โลมาประดับดาว', icon: '🐬', img: 'img/pets/dolphin.png' },
     ],
 };
+function petImg(pet, size = 'w-10 h-10', extra = '') {
+    return `<img src="${pet.img || ''}" alt="${pet.name}" loading="lazy" class="${size} object-contain rounded-lg inline-block ${extra}" title="${pet.name}">`;
+}
 
 function getPetsKey(uid) { return `myPets_${uid}`; }
 function getPets(uid) { return JSON.parse(localStorage.getItem(getPetsKey(uid)) || '[]'); }
@@ -422,7 +425,7 @@ function buyItem(id) {
         const rolled = pool[Math.floor(Math.random() * pool.length)];
         const pets = getPets(uid);
         const dupe = pets.filter(p => p.petId === rolled.id).length;
-        pets.push({ petId: rolled.id, name: rolled.name, icon: rolled.icon, stars: dupe + 1, acquired: Date.now() });
+        pets.push({ petId: rolled.id, name: rolled.name, icon: rolled.icon, img: rolled.img, stars: dupe + 1, acquired: Date.now() });
         savePets(uid, pets);
         showEggReveal(rolled, dupe > 0 ? dupe + 1 : 0, id === 'egg_rare');
     } else {
@@ -444,7 +447,7 @@ function buildQuestsPanel() {
     const spendable = Math.max(0, _gamified[uid].xp - getSpent(uid));
     const pets = getPets(uid);
     const petChips = pets.length
-        ? pets.map((p, i) => `<span class="relative inline-block text-2xl pet-pop cursor-pointer" title="${p.name}${p.stars > 1 ? ` ⭐×${p.stars}` : ''}" onclick="petSay('${p.name}','${p.icon}')">${p.icon}${p.stars > 1 ? `<span class="absolute -bottom-1 -right-1 text-[10px]">⭐${p.stars}</span>` : ''}</span>`).join(' ')
+        ? pets.map(p => `<span class="relative inline-block cursor-pointer pet-pop" title="${p.name}${p.stars > 1 ? ` ⭐×${p.stars}` : ''}" onclick="petSay('${p.name}','${p.icon}')">${petImg(p, 'w-11 h-11 bg-white border border-slate-200 shadow-sm')}${p.stars > 1 ? `<span class="absolute -bottom-1 -right-1 bg-yellow-400 text-white text-[10px] font-bold rounded-full px-1">⭐${p.stars}</span>` : ''}</span>`).join(' ')
         : '<span class="text-xs text-slate-400">ยังไม่มีคู่หู — เปิดไข่แรกได้เลย!</span>';
     el.innerHTML = `🪙 ${spendable} XP <span class="text-xs text-slate-400 ml-1">(สะสม ${_gamified[uid].xp} - ใช้ไป ${getSpent(uid)})</span><br><span class="text-base">${petChips}</span>`;
 }
@@ -480,8 +483,8 @@ function showEggReveal(pet, stars, isRare) {
             : 'radial-gradient(circle, rgba(139,92,246,.5) 0%, rgba(59,110,245,.3) 45%, transparent 70%)';
         overlay.innerHTML = `
             <div class="text-center px-4 fade-in">
-                <div class="mx-auto mb-4 flex items-center justify-center" style="width:260px;height:260px;border-radius:50%;background:${shine}">
-                    <div class="text-[110px] md:text-[130px]" style="animation: bounce 1.2s infinite;filter:drop-shadow(0 8px 24px rgba(0,0,0,.4))">${pet.icon}</div>
+                <div class="mx-auto mb-4 flex items-center justify-center" style="width:280px;height:280px;border-radius:50%;background:${shine}">
+                    <img src="${pet.img}" alt="${pet.name}" class="w-52 h-52 object-contain" style="animation: bounce 1.2s infinite;filter:drop-shadow(0 8px 24px rgba(0,0,0,.35))">
                 </div>
                 <p class="text-3xl font-bold text-white">${pet.name}${stars > 1 ? ` <span class="text-yellow-300">⭐×${stars}</span>` : ''}</p>
                 <p class="text-sm mt-2 ${isRare ? 'text-yellow-300' : 'text-violet-200'}">${isRare ? '✨ คู่หูหายาก! คุณโชคดีมาก!' : '🎉 ได้คู่หูใหม่แล้ว!'}</p>
@@ -601,11 +604,11 @@ async function buildQuests() {
         const pet = d.xp >= 1400 ? '🐉' : lv.pet || lv.icon;
         const myPets = getPets(d.uid);
         const petRow = myPets.length
-            ? myPets.slice(0, 4).map(p => `<span class="text-lg" title="${p.name}">${p.icon}</span>`).join('') + (myPets.length > 4 ? `<span class="text-xs text-slate-400">+${myPets.length - 4}</span>` : '')
+            ? myPets.slice(0, 4).map(p => petImg(p, 'w-8 h-8 bg-white border border-slate-200', 'hover:scale-125 transition')).join('') + (myPets.length > 4 ? `<span class="text-xs text-slate-400 ml-0.5">+${myPets.length - 4}</span>` : '')
             : '';
         return `<tr class="hover:bg-slate-50">
             <td class="px-4 py-2.5 text-center text-lg">${medal}</td>
-            <td class="px-4 py-2.5 font-medium text-slate-700"><span class="text-xl mr-1">${pet}</span>${d.name}${petRow ? `<span class="ml-2">${petRow}</span>` : ''}</td>
+            <td class="px-4 py-2.5 font-medium text-slate-700"><span class="text-xl mr-1">${pet}</span>${d.name}${petRow ? `<span class="ml-2 inline-flex items-center gap-0.5">${petRow}</span>` : ''}</td>
             <td class="px-4 py-2.5 text-center">${lv.icon} <b>${lv.name}</b></td>
             <td class="px-4 py-2.5 text-center font-bold text-brand-600">${d.xp} XP</td>
             <td class="px-4 py-2.5 text-center">${d.streak > 0 ? `🔥 ${d.streak}` : '-'}</td>
@@ -667,7 +670,7 @@ function showQuestDetail() {
         <div class="bg-slate-50 border border-slate-200 rounded-xl p-3">
             <p class="text-xs font-semibold text-slate-500 mb-1.5">🐾 คู่หูของฉัน (${getPets(uid).length} ตัว):</p>
             ${getPets(uid).length
-                ? `<div class="flex flex-wrap gap-2">${getPets(uid).map(p => `<span class="relative inline-block text-2xl pet-pop cursor-pointer bg-white border border-slate-200 rounded-lg px-2 py-1.5" title="${p.name}${p.stars > 1 ? ` ⭐×${p.stars}` : ''}" onclick="petSay('${p.name}','${p.icon}')">${p.icon}${p.stars > 1 ? `<span class="absolute -bottom-1 -right-1 text-[10px]">⭐${p.stars}</span>` : ''}</span>`).join('')}</div>`
+                ? `<div class="flex flex-wrap gap-2">${getPets(uid).map(p => `<span class="relative inline-block pet-pop cursor-pointer" title="${p.name}${p.stars > 1 ? ` ⭐×${p.stars}` : ''}" onclick="petSay('${p.name}','${p.icon}')">${petImg(p, 'w-14 h-14 bg-white border border-slate-200 shadow-sm')}${p.stars > 1 ? `<span class="absolute -bottom-1 -right-1 bg-yellow-400 text-white text-[10px] font-bold rounded-full px-1">⭐${p.stars}</span>` : ''}</span>`).join('')}</div>`
                 : '<p class="text-xs text-slate-400">ยังไม่มีคู่หู — ไปร้านคู่หูเปิดไข่แรกได้เลย! 🥚</p>'}
         </div>`;
 }

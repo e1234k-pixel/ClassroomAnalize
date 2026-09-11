@@ -16,6 +16,8 @@ let currentCourseId = null, currentAssignmentId = null;
 let userRole = null; // 'teacher' | 'student'
 
 /* ─── Auth ─── */
+// role from URL (?role=teacher / ?role=student) — overrides auto-detect
+const URL_ROLE = new URLSearchParams(location.search).get('role');
 function handleGoogleLogin() {
     google.accounts.oauth2.initTokenClient({
         client_id: CLIENT_ID,
@@ -63,7 +65,12 @@ async function afterLogin() {
         }
     }
     loadCourses().then(async () => {
-        userRole = await detectRole();
+        // URL role wins; otherwise auto-detect
+        if (URL_ROLE === 'teacher' || URL_ROLE === 'student') {
+            userRole = URL_ROLE;
+        } else {
+            userRole = await detectRole();
+        }
         applyRoleUI();
         if (userRole === 'student') {
             buildStudentView();
@@ -1049,6 +1056,15 @@ function toast(msg) {
     el.textContent = msg; el.classList.remove('hidden');
     clearTimeout(el._t); el._t = setTimeout(() => el.classList.add('hidden'), 2500);
 }
+
+/* Role note on login screen (from URL ?role=) */
+(function initRoleNote() {
+    const note = document.getElementById('login-role-note');
+    if (!note) return;
+    if (URL_ROLE === 'teacher') note.textContent = '🧑‍🏫 โหมดครูผู้สอน';
+    else if (URL_ROLE === 'student') note.textContent = '🎓 โหมดนักเรียน';
+    else note.textContent = 'โหมดอัตโนมัติ — ระบบตรวจสิทธิ์จากบัญชี Google';
+})();
 
 const _origOnCourseChange = onCourseChange;
 onCourseChange = async function() {

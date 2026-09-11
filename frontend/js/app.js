@@ -361,17 +361,39 @@ function saveAIConfig() {
 
 /* ═══ Pet Shop & Quick Win Quests ═══ */
 const SHOP_ITEMS = [
-    { id: 'egg_common', name: 'ไข่ธรรมดา', icon: '🥚', cost: 150, desc: 'สุ่มคู่หูระดับ 1-2' },
-    { id: 'egg_rare', name: 'ไข่หายาก', icon: '🥚✨', cost: 400, desc: 'สุ่มคู่หูระดับ 3-4' },
+    { id: 'egg_common', name: 'ไข่ธรรมดา', icon: '🥚', cost: 150, desc: 'สุ่มคู่หูทั่วไป (6 แบบ)' },
+    { id: 'egg_rare', name: 'ไข่หายาก', icon: '🥚✨', cost: 400, desc: 'สุ่มคู่หูหายาก (5 แบบ)' },
     { id: 'food', name: 'อาหารคู่หู', icon: '🍖', cost: 80, desc: '+30 XP ให้คู่หูโตเร็ว' },
     { id: 'skin_gold', name: 'สกินทอง', icon: '👑', cost: 600, desc: 'กรอบชื่อสีทอง 7 วัน' },
     { id: 'streak_shield', name: 'โล่ป้องกัน Streak', icon: '🛡️', cost: 250, desc: 'คุ้มครอง Streak 1 ครั้งเมื่อพลาดส่ง' },
 ];
 
-function getPets() { return JSON.parse(localStorage.getItem('myPets') || '[]'); }
-function savePets(p) { localStorage.setItem('myPets', JSON.stringify(p)); }
-function getInventory() { return JSON.parse(localStorage.getItem('inventory') || '{}'); }
-function saveInventory(inv) { localStorage.setItem('inventory', JSON.stringify(inv)); }
+/* Pet catalog: common/rare pools + the 5 level pets */
+const PET_CATALOG = {
+    common: [
+        { id: 'cat', name: 'ลูกแมวขี้อ้อน', icon: '🐱' },
+        { id: 'bunny', name: 'กระต่ายน้อย', icon: '🐰' },
+        { id: 'panda', name: 'แพนด้าขี้เซา', icon: '🐼' },
+        { id: 'fox', name: 'จิ้งจอกส้ม', icon: '🦊' },
+        { id: 'penguin', name: 'เพนกวินจอมป่วน', icon: '🐧' },
+        { id: 'turtle', name: 'เต่านักเรียน', icon: '🐢' },
+    ],
+    rare: [
+        { id: 'unicorn', name: 'ยูนิคอร์นสายรุ้ง', icon: '🦄' },
+        { id: 'tiger', name: 'เสือขาวผู้กล้า', icon: '🐯' },
+        { id: 'koala', name: 'โคอาล่านักฝัน', icon: '🐨' },
+        { id: 'eagle', name: 'อินทรีสายฟ้า', icon: '🦅' },
+        { id: 'dolphin', name: 'โลมาประดับดาว', icon: '🐬' },
+    ],
+};
+
+function getPetsKey(uid) { return `myPets_${uid}`; }
+function getPets(uid) { return JSON.parse(localStorage.getItem(getPetsKey(uid)) || '[]'); }
+function savePets(uid, p) { localStorage.setItem(getPetsKey(uid), JSON.stringify(p)); }
+function getInventory(uid) { return JSON.parse(localStorage.getItem(`inventory_${uid}`) || '{}'); }
+function saveInventory(uid, inv) { localStorage.setItem(`inventory_${uid}`, JSON.stringify(inv)); }
+function getSpent(uid) { return parseInt(localStorage.getItem(`spent_${uid}`) || '0'); }
+function addSpent(uid, amount) { localStorage.setItem(`spent_${uid}`, String(getSpent(uid) + amount)); }
 
 function buildShop() {
     const grid = document.getElementById('shop-grid');
@@ -390,23 +412,24 @@ function buyItem(id) {
     const uid = document.getElementById('quest-student-select').value;
     if (!uid || !_gamified || !_gamified[uid]) { toast('เลือกนักเรียนก่อน'); return; }
     const d = _gamified[uid];
-    if (d.xp < item.cost) { toast(`❌ XP ไม่พอ (มี ${d.xp}, ต้องการ ${item.cost})`); return; }
+    // spendable XP = earned (from Classroom) - spent (permanent)
+    const spendable = d.xp - getSpent(uid);
+    if (spendable < item.cost) { toast(`❌ XP ไม่พอ (มี ${spendable}, ต้องการ ${item.cost})`); return; }
+    addSpent(uid, item.cost);
 
-    const inv = getInventory();
     if (id === 'egg_common' || id === 'egg_rare') {
-        const pools = id === 'egg_common' ? [0, 1] : [2, 3, 4];
-        const rolled = pools[Math.floor(Math.random() * pools.length)];
-        const lv = LEVELS[rolled];
-        const pets = getPets();
-        pets.push({ name: lv.petName, icon: lv.pet, level: lv.name, acquired: Date.now() });
-        savePets(pets);
-        d.xp -= item.cost;
-        toast(`🎉 ได้คู่หูใหม่: ${lv.pet} ${lv.petName}!`);
+        const pool = id === 'egg_common' ? PET_CATALOG.common : PET_CATALOG.rare;
+        const rolled = pool[Math.floor(Math.random() * pool.length)];
+        const pets = getPets(uid);
+        const dupe = pets.filter(p => p.petId === rolled.id).length;
+        pets.push({ petId: rolled.id, name: rolled.name, icon: rolled.icon, stars: dupe + 1, acquired: Date.now() });
+        savePets(uid, pets);
+        toast(`🎉 ได้คู่หูใหม่: ${rolled.icon} ${rolled.name}${dupe > 0 ? ` (⭐${dupe + 1})` : ''}!`);
     } else {
+        const inv = getInventory(uid);
         inv[id] = (inv[id] || 0) + 1;
-        saveInventory(inv);
-        d.xp -= item.cost;
-        if (id === 'food') { d.xp += 30; toast('🍖 คู่หูได้ +30 XP!'); }
+        saveInventory(uid, inv);
+        if (id === 'food') toast('🍖 คู่หูได้กำลังใจเพิ่ม!');
         else toast(`🛒 ซื้อ ${item.name} สำเร็จ!`);
     }
     showQuestDetail();
@@ -418,7 +441,10 @@ function buildQuestsPanel() {
     const el = document.getElementById('shop-balance');
     if (!el) return;
     if (!uid || !_gamified || !_gamified[uid]) { el.textContent = 'เลือกนักเรียนเพื่อดู XP'; return; }
-    el.textContent = `🪙 ${_gamified[uid].xp} XP`;
+    const spendable = Math.max(0, _gamified[uid].xp - getSpent(uid));
+    const pets = getPets(uid);
+    const petIcons = pets.map(p => p.icon).join(' ') || 'ยังไม่มีคู่หู';
+    el.innerHTML = `🪙 ${spendable} XP <span class="text-xs text-slate-400 ml-1">(สะสม ${_gamified[uid].xp} - ใช้ไป ${getSpent(uid)})</span><br><span class="text-base">${petIcons}</span>`;
 }
 
 /* Quick Win quests for at-risk students */

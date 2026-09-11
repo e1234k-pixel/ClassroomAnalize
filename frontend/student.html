@@ -167,6 +167,8 @@ function login() {
                 const p = await (await fetch('https://www.googleapis.com/oauth2/v2/userinfo', { headers: { Authorization: `Bearer ${token}` } })).json();
                 myName = p.name || 'นักเรียน';
                 myEmail = p.email || '';
+                // Google OAuth userinfo.id is the same Classroom userId used in D1
+                myUid = p.id || p.sub || null;
                 document.getElementById('my-name').textContent = myName;
                 if (p.picture) {
                     const img = document.getElementById('my-photo');
@@ -175,7 +177,16 @@ function login() {
                 } else {
                     document.getElementById('my-initial').textContent = myName.charAt(0);
                 }
-            } catch (e) { document.getElementById('my-initial').textContent = 'น'; }
+            } catch (e) {
+                document.getElementById('my-initial').textContent = 'น';
+                // Fallback: tokeninfo reliably exposes the Google account id
+                try {
+                    const ti = await (await fetch(`https://oauth2.googleapis.com/tokeninfo?access_token=${encodeURIComponent(token)}`)).json();
+                    myUid = ti.user_id || ti.sub || myUid;
+                    myEmail = ti.email || myEmail;
+                } catch (_) {}
+            }
+            if (myUid) await refreshCentral();
 
             try {
                 const data = await gapi('courses?pageSize=30&courseStates=ACTIVE&studentId=me');

@@ -225,6 +225,7 @@ classroom-hub/
 |---|---|
 | สูง | ต่อ Grading Studio: นับงานค้างข้าม assignment, โหลดงานหลายงานพร้อมกัน (ปัจจุบัน count pending ทำ per-request loop ช้า) |
 | สูง | AI Feedback จริง: เชื่อม LongCat-2.0 (สร้าง key ใหม่, เก็บใน env) |
+| สูง | 🏆 Gamification Phase 2: สัตว์เลี้ยงกิน XP + ร้านค้า + ภารกิจเฉพาะกลุ่มเสี่ยง (quick win) |
 | กลาง | Export PDF ปพ.5 จริง (เช่น jsPDF / SheetJS) |
 | กลาง | Custom Domain `classroom.eknarin.com` (CNAME → classroomanalize.pages.dev) |
 | กลาง | 🏆 Gamification Phase 1: XP + Streak + Student Slip (คำนวณจาก submissions ที่มีอยู่) |

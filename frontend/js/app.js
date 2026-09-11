@@ -294,17 +294,152 @@ function copySlip() {
 }
 
 /* ─── Feedback ─── */
-function generateFeedback() {
-    const sub = submissions.find(s => s.userId === document.getElementById('student-select').value);
-    const name = students.find(x => x.userId === sub?.userId)?.profile.name.fullName || 'นักเรียน';
-    let fb;
-    if (!sub) fb = 'ยังไม่พบการส่งงาน กรุณาเลือกนักเรียนและงานก่อนครับ';
-    else if (sub.state === 'CREATED' || sub.state === 'NEW') fb = `${name} ยังไม่ส่งงาน กรุณารีบส่งภายในกำหนดนะครับ`;
-    else if ((sub.assignedGrade ?? sub.draftGrade ?? 0) / (assignments.find(a => a.id === currentAssignmentId)?.maxPoints || 100) >= 0.8)
-        fb = `${name} ทำงานได้ดีมาก จัดรูปแบบเรียบร้อย เนื้อหาถูกต้องครบถ้วน ชมเชยมากครับ 👏`;
-    else fb = `${name} ทำงานส่งแล้ว แต่ควรปรับปรุงความถูกต้องของคำตอบและตรวจสอบก่อนส่งอีกครั้งครับ`;
-    document.getElementById('feedback-text').value = fb;
-    toast('✨ ร่าง Feedback แล้ว');
+// ═══ AI Feedback via LongCat 2.0 (OpenAI-compatible) ═══
+function getAIConfig() { return JSON.parse(localStorage.getItem('aiConfig') || 'null'); }
+function saveAIConfig() {
+        const cfg = {
+            key: document.getElementById('ai-key').value.trim(),
+            base: document.getElementById('ai-base').value.trim() || 'https://api.longcat.chat/openai',
+            model: document.getElementById('ai-model').value.trim() || 'LongCat-2.0',
+        };
+        if (!cfg.key) { toast('❌ กรอก API Key ก่อน'); return; }
+        localStorage.setItem('aiConfig', JSON.stringify(cfg));
+        document.getElementById('ai-setup-modal').classList.add('hidden');
+        toast('✅ บันทึกการตั้งค่า AI แล้ว');
+    }
+    function openAISetup() {
+        const cfg = getAIConfig();
+        if (cfg) {
+            document.getElementById('ai-key').value = cfg.key || '';
+            document.getElementById('ai-base').value = cfg.base || '';
+            document.getElementById('ai-model').value = cfg.model || '';
+        }
+        document.getElementById('ai-setup-modal').classList.remove('hidden');
+    }
+
+    async function generateFeedback() {
+        const sub = submissions.find(s => s.userId === document.getElementById('student-select').value);
+        const name = students.find(x => x.userId === sub?.userId)?.profile.name.fullName || 'นักเรียน';
+        const cfg = getAIConfig();
+        if (!cfg || !cfg.key) { openAISetup(); return; }
+
+        const workTitle = document.getElementById('assignment-select').selectedOptions[0]?.textContent || '-';
+        const maxPts = assignments.find(a => a.id === currentAssignmentId)?.maxPoints || 100;
+        const grade = sub ? (sub.assignedGrade ?? sub.draftGrade) : null;
+        const stateMap = { CREATED: 'ยังไม่ส่งงาน', TURNED_IN: 'ส่งงานแล้วรอตรวจ', RETURNED: 'ได้รับงานคืนแล้ว', NEW: 'ยังไม่ส่งงาน', RECLAIMED_BY_STUDENT: 'นักเรียนเรียกคืนงาน' };
+        const missing = sub && (sub.state === 'CREATED' || sub.state === 'NEW');
+
+        const sys = 'คุณเป็นครูผู้ช่วยเขียนข้อความฟีดแบ็กให้นักเรียนไทยระดับมัธยม ตอบเป็นข้อความเดียวสั้นกระชับ 2-4 ประโยค ภาษาไทยแบบอบอุ่นให้กำลังใจ เหมาะกับส่งใน Google Classroom ห้ามใช้ Markdown ห้ามขึ้นต้นด้วยคำทักทาย';
+        const user = `นักเรียน: ${name}\nงาน: ${workTitle}\nสถานะ: ${sub ? (stateMap[sub.state] || sub.state) : 'ไม่พบการส่งงาน'}${sub?.late ? ' (ส่งล่าช้า)' : ''}\nคะแนน: ${grade != null ? `${grade}/${maxPts}` : 'ยังไม่ให้คะแนน'}\n${missing ? 'ชวนให้รีบส่งงานอย่างมีกำลังใจ' : grade != null && grade / maxPts >= 0.8 ? 'ชมเชยบวกข้อเสนอแนะเล็กน้อย' : 'ให้กำลังใจพร้อมข้อเสนอแนะให้ปรับปรุง'}`;
+
+        const btn = document.querySelector('[onclick="generateFeedback()"]');
+        const orig = btn.textContent; btn.textContent = '⏳ กำลังร่าง...'; btn.disabled = true;
+        try {
+            const r = await fetch(`${cfg.base}/v1/chat/completions`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${cfg.key}` },
+                body: JSON.stringify({ model: cfg.model, messages: [{ role: 'system', content: sys }, { role: 'user', content: user }], max_tokens: 300, temperature: 0.7 })
+            });
+            if (!r.ok) throw new Error(`API ${r.status}`);
+            const data = await r.json();
+            document.getElementById('feedback-text').value = data.choices?.[0]?.message?.content?.trim() || '';
+            toast('✨ AI ร่าง Feedback แล้ว');
+        } catch (e) {
+            console.error(e);
+            // fallback template
+            let fb;
+            if (!sub) fb = 'ยังไม่พบการส่งงาน กรุณาเลือกนักเรียนและงานก่อนครับ';
+            else if (missing) fb = `${name} ยังไม่ส่งงาน กรุณารีบส่งภายในกำหนดนะครับ`;
+            else if (grade != null && grade / maxPts >= 0.8) fb = `${name} ทำงานได้ดีมาก เนื้อหาถูกต้องครบถ้วน ชมเชยมากครับ 👏`;
+            else fb = `${name} ส่งงานแล้ว แต่ควรปรับปรุงความถูกต้องของคำตอบก่อนส่งครั้งต่อไปครับ`;
+            document.getElementById('feedback-text').value = fb;
+            toast('⚠️ เชื่อม AI ไม่ได้ ใช้ร่างสำเร็จรูปแทน');
+        } finally {
+            btn.textContent = orig; btn.disabled = false;
+        }
+    }
+
+/* ═══ Pet Shop & Quick Win Quests ═══ */
+const SHOP_ITEMS = [
+    { id: 'egg_common', name: 'ไข่ธรรมดา', icon: '🥚', cost: 150, desc: 'สุ่มคู่หูระดับ 1-2' },
+    { id: 'egg_rare', name: 'ไข่หายาก', icon: '🥚✨', cost: 400, desc: 'สุ่มคู่หูระดับ 3-4' },
+    { id: 'food', name: 'อาหารคู่หู', icon: '🍖', cost: 80, desc: '+30 XP ให้คู่หูโตเร็ว' },
+    { id: 'skin_gold', name: 'สกินทอง', icon: '👑', cost: 600, desc: 'กรอบชื่อสีทอง 7 วัน' },
+    { id: 'streak_shield', name: 'โล่ป้องกัน Streak', icon: '🛡️', cost: 250, desc: 'คุ้มครอง Streak 1 ครั้งเมื่อพลาดส่ง' },
+];
+
+function getPets() { return JSON.parse(localStorage.getItem('myPets') || '[]'); }
+function savePets(p) { localStorage.setItem('myPets', JSON.stringify(p)); }
+function getInventory() { return JSON.parse(localStorage.getItem('inventory') || '{}'); }
+function saveInventory(inv) { localStorage.setItem('inventory', JSON.stringify(inv)); }
+
+function buildShop() {
+    const grid = document.getElementById('shop-grid');
+    if (!grid) return;
+    grid.innerHTML = SHOP_ITEMS.map(it => `
+        <div class="border border-slate-200 rounded-xl p-3 text-center hover:shadow-md transition bg-white">
+            <div class="text-3xl mb-1">${it.icon}</div>
+            <p class="text-sm font-bold text-slate-700">${it.name}</p>
+            <p class="text-xs text-slate-400 mb-2">${it.desc}</p>
+            <button onclick="buyItem('${it.id}')" class="w-full bg-amber-400 hover:bg-amber-500 text-amber-900 text-xs font-bold py-1.5 rounded-lg">🪙 ${it.cost} XP</button>
+        </div>`).join('');
+}
+
+function buyItem(id) {
+    const item = SHOP_ITEMS.find(i => i.id === id);
+    const uid = document.getElementById('quest-student-select').value;
+    if (!uid || !_gamified || !_gamified[uid]) { toast('เลือกนักเรียนก่อน'); return; }
+    const d = _gamified[uid];
+    if (d.xp < item.cost) { toast(`❌ XP ไม่พอ (มี ${d.xp}, ต้องการ ${item.cost})`); return; }
+
+    const inv = getInventory();
+    if (id === 'egg_common' || id === 'egg_rare') {
+        const pools = id === 'egg_common' ? [0, 1] : [2, 3, 4];
+        const rolled = pools[Math.floor(Math.random() * pools.length)];
+        const lv = LEVELS[rolled];
+        const pets = getPets();
+        pets.push({ name: lv.petName, icon: lv.pet, level: lv.name, acquired: Date.now() });
+        savePets(pets);
+        d.xp -= item.cost;
+        toast(`🎉 ได้คู่หูใหม่: ${lv.pet} ${lv.petName}!`);
+    } else {
+        inv[id] = (inv[id] || 0) + 1;
+        saveInventory(inv);
+        d.xp -= item.cost;
+        if (id === 'food') { d.xp += 30; toast('🍖 คู่หูได้ +30 XP!'); }
+        else toast(`🛒 ซื้อ ${item.name} สำเร็จ!`);
+    }
+    showQuestDetail();
+    buildQuestsPanel();
+}
+
+function buildQuestsPanel() {
+    const uid = document.getElementById('quest-student-select').value;
+    const el = document.getElementById('shop-balance');
+    if (!el) return;
+    if (!uid || !_gamified || !_gamified[uid]) { el.textContent = 'เลือกนักเรียนเพื่อดู XP'; return; }
+    el.textContent = `🪙 ${_gamified[uid].xp} XP`;
+}
+
+/* Quick Win quests for at-risk students */
+function buildQuickWin(uid) {
+    const el = document.getElementById('quick-win');
+    if (!el) return;
+    if (!uid || !_gamified || !_gamified[uid]) { el.innerHTML = '<p class="text-xs text-slate-400">เลือกนักเรียนเพื่อดูภารกิจ</p>'; return; }
+    const d = _gamified[uid];
+    const quests = [];
+    if (d.missing > 0) {
+        quests.push({ icon: '🎯', text: `ส่งงานที่ค้าง 1 ชิ้น (เหลือ ${d.missing} ชิ้น)`, reward: 50 });
+        if (d.missing > 2) quests.push({ icon: '🎯', text: 'ส่งงานค้างอีก 1 ชิ้น (ทำต่อจากเมื่อวาน)', reward: 50 });
+    } else {
+        quests.push({ icon: '🌟', text: 'ส่งงานถัดไปให้ตรงเวลา', reward: 50 });
+    }
+    quests.push({ icon: '📈', text: 'ทำคะแนนงานหน้าให้ดีขึ้นจากงานล่าสุด', reward: 80 });
+    el.innerHTML = quests.map(q => `
+        <div class="flex items-center justify-between bg-mint-50 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2 mb-1.5">
+            <span class="text-xs text-slate-600">${q.icon} ${q.text}</span>
+            <span class="text-xs font-bold text-emerald-600 whitespace-nowrap ml-2">+${q.reward} XP</span>
+        </div>`).join('');
 }
 
 /* ═══ Gamification: XP / Streak / Badges ═══ */
@@ -423,10 +558,15 @@ async function buildQuests() {
         sel.appendChild(o);
     });
     document.getElementById('quest-detail').innerHTML = '<p class="text-slate-400 text-sm">เลือกนักเรียนเพื่อดู XP, Streak และป้ายรางวัล</p>';
+    buildShop();
+    buildQuestsPanel();
+    buildQuickWin(null);
 }
 
 function showQuestDetail() {
     const uid = document.getElementById('quest-student-select').value;
+    buildQuickWin(uid);
+    buildQuestsPanel();
     const el = document.getElementById('quest-detail');
     if (!uid || !_gamified || !_gamified[uid]) { el.innerHTML = '<p class="text-slate-400 text-sm">เลือกนักเรียนเพื่อดูข้อมูล</p>'; return; }
     const d = _gamified[uid];

@@ -152,8 +152,9 @@
                     <h3 class="font-bold text-slate-700 mb-3">🤖 AI ช่วยร่าง Feedback</h3>
                     <textarea id="feedback-text" class="w-full border border-slate-300 rounded-xl p-3 text-sm" rows="4" placeholder="พิมพ์เอง หรือกดปุ่มให้ AI ร่าง..."></textarea>
                     <div class="flex gap-2 mt-2">
-                        <button onclick="generateFeedback()" class="bg-gradient-to-r from-violet-600 to-brand-500 text-white text-sm px-4 py-2 rounded-lg shadow hover:opacity-90 transition">✨ ร่างอัตโนมัติ</button>
+                        <button onclick="generateFeedback()" class="bg-gradient-to-r from-violet-600 to-brand-500 text-white text-sm px-4 py-2 rounded-lg shadow hover:opacity-90 transition">✨ ร่างอัตโนมัติ (AI)</button>
                         <button onclick="copyFeedback()" class="bg-slate-600 hover:bg-slate-700 text-white text-sm px-4 py-2 rounded-lg transition">📋 คัดลอก</button>
+                        <button onclick="openAISetup()" class="bg-slate-100 hover:bg-slate-200 text-slate-500 text-sm px-3 py-2 rounded-lg transition" title="ตั้งค่า AI API">⚙️</button>
                     </div>
                 </div>
 
@@ -266,14 +267,8 @@
                 </select>
                 <div id="quest-detail" class="text-sm"><p class="text-slate-400">เลือกวิชาแล้วภารกิจจะโหลดอัตโนมัติ</p></div>
                 <div class="mt-4 pt-4 border-t border-slate-100">
-                    <p class="text-xs font-semibold text-slate-500 mb-2">ป้ายรางวัลทั้งหมด:</p>
-                    <div class="flex flex-wrap gap-2 text-xs">
-                        <span class="bg-violet-100 text-violet-800 px-2 py-1 rounded-full" title="ส่งงานก่อนเดดไลน์ 24 ชม. ครบ 5 ครั้ง">🌅 ตื่นเช้า</span>
-                        <span class="bg-violet-100 text-violet-800 px-2 py-1 rounded-full" title="ได้คะแนนเต็ม 3 งาน">💯 เพอร์เฟกต์</span>
-                        <span class="bg-violet-100 text-violet-800 px-2 py-1 rounded-full" title="คะแนนสูงขึ้นติดต่อกัน 3 งาน">🚀 พัฒนาตัวเอง</span>
-                        <span class="bg-violet-100 text-violet-800 px-2 py-1 rounded-full" title="เคยค้างแต่กลับมาส่งครบ">🛡️ ไม่ยอมแพ้</span>
-                        <span class="bg-violet-100 text-violet-800 px-2 py-1 rounded-full" title="ส่งครบทุกงานทั้งเทอม">👑 เจ้าตาราง</span>
-                    </div>
+                    <p class="text-xs font-semibold text-slate-500 mb-2">🎯 ภารกิจ Quick Win (ช่วยเริ่มต้นง่ายๆ):</p>
+                    <div id="quick-win"><p class="text-xs text-slate-400">เลือกนักเรียนเพื่อดูภารกิจ</p></div>
                 </div>
                 <div class="mt-4">
                     <img src="img/pets-chibi.png" alt="คู่หูสัตว์เลี้ยง 5 ระดับ" class="w-full rounded-xl border border-slate-200">
@@ -283,11 +278,37 @@
                     <img src="img/badges-chibi.png" alt="ป้ายรางวัลทั้งหมด" class="w-full rounded-xl border border-slate-200">
                     <p class="text-xs text-slate-400 text-center mt-2">🌅 ตื่นเช้า • 💯 เพอร์เฟกต์ • 🚀 พัฒนาตัวเอง • 🛡️ ไม่ยอมแพ้ • 👑 เจ้าตาราง</p>
                 </div>
+            </div>
+            <div class="card p-6 lg:col-span-2">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="font-bold text-slate-700">🏪 ร้านคู่หู (แลกด้วย XP)</h2>
+                    <span id="shop-balance" class="text-sm font-bold text-amber-600 bg-amber-50 px-3 py-1 rounded-full">เลือกนักเรียนเพื่อดู XP</span>
                 </div>
+                <div id="shop-grid" class="grid grid-cols-2 sm:grid-cols-5 gap-3"></div>
+                <p class="text-xs text-slate-400 mt-3">💡 XP เป็นของรางวัลเชิงสัญลักษณ์ในห้องเรียน — ครูปรับราคา/ไอเทมได้ในอนาคต</p>
+            </div>
             </div>
         </div>
     </div>
 </main>
+
+<!-- AI Setup Modal -->
+<div id="ai-setup-modal" class="fixed inset-0 modal-overlay flex items-center justify-center z-50 hidden">
+    <div class="card max-w-md w-full p-8 mx-4 fade-in">
+        <h3 class="text-lg font-bold text-slate-800 mb-1">🤖 ตั้งค่า AI Feedback</h3>
+        <p class="text-xs text-slate-500 mb-5">ใช้ API แบบ OpenAI-compatible เช่น LongCat — Key เก็บในเบราว์เซอร์ของคุณเท่านั้น</p>
+        <label class="text-sm font-medium text-slate-600">API Key *</label>
+        <input id="ai-key" type="password" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm mb-3" placeholder="ak_...">
+        <label class="text-sm font-medium text-slate-600">Base URL</label>
+        <input id="ai-base" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm mb-3" placeholder="https://api.longcat.chat/openai">
+        <label class="text-sm font-medium text-slate-600">Model</label>
+        <input id="ai-model" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm mb-5" placeholder="LongCat-2.0">
+        <div class="flex gap-2">
+            <button onclick="saveAIConfig()" class="flex-1 bg-brand-600 hover:bg-brand-700 text-white py-2.5 rounded-lg text-sm font-medium">💾 บันทึก</button>
+            <button onclick="document.getElementById('ai-setup-modal').classList.add('hidden')" class="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-600 py-2.5 rounded-lg text-sm">ยกเลิก</button>
+        </div>
+    </div>
+</div>
 
 <!-- Toast -->
 <div id="toast" class="fixed bottom-6 right-6 bg-slate-800 text-white px-5 py-3 rounded-xl shadow-xl hidden z-50 text-sm"></div>

@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Classroom Hub — นักเรียน</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Sarabun', sans-serif; }
+        .card { background:#fff; border-radius:1rem; box-shadow:0 1px 3px rgba(0,0,0,.08),0 8px 24px rgba(21,42,99,.06); }
+        @keyframes bounce { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+        @keyframes eggShake { 0%,100% { transform: rotate(-8deg) scale(1); } 50% { transform: rotate(8deg) scale(1.06); } }
+        .pet-pop { transition: transform .2s; }
+        .pet-pop:hover { transform: scale(1.25) rotate(-6deg); }
+        .fade-in { animation: fadeIn .35s ease; }
+        @keyframes fadeIn { from { opacity:0; transform:translateY(6px);} to { opacity:1; transform:none;} }
+    </style>
+</head>
+<body class="bg-slate-100 min-h-screen">
+
+<!-- LOGIN -->
+<div id="login-modal" class="fixed inset-0 z-50 bg-cover bg-center flex items-center justify-center px-4" style="background-image:url('img/hero-banner.png')">
+    <div class="absolute inset-0 bg-gradient-to-b from-indigo-900/60 via-brand-800/50 to-indigo-900/70"></div>
+    <div class="card max-w-md w-full p-10 text-center fade-in relative">
+        <div class="mx-auto w-20 h-20 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center text-4xl mb-5 shadow-lg">🎓</div>
+        <h2 class="text-2xl font-bold text-slate-800 mb-1">Classroom Hub</h2>
+        <p class="text-sm text-slate-500 mb-2">โซนนักเรียน — คู่หูสะสม XP</p>
+        <p class="text-xs font-semibold text-emerald-600 mb-6">🎓 โหมดนักเรียน</p>
+        <button onclick="login()" class="w-full bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-medium py-3 rounded-xl flex items-center justify-center gap-3 shadow-sm transition">
+            <svg class="w-5 h-5" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+            เข้าสู่ระบบด้วย Google
+        </button>
+        <p class="text-xs text-slate-400 mt-6">🔒 ระบบอ่านข้อมูล Classroom ของคุณเท่านั้น</p>
+    </div>
+</div>
+
+<!-- MAIN -->
+<main id="main" class="hidden max-w-5xl mx-auto px-4 py-6">
+    <header class="card p-4 mb-4 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+            <img id="my-photo" class="w-10 h-10 rounded-full hidden" alt="">
+            <span id="my-initial" class="w-10 h-10 rounded-full bg-emerald-500 text-white font-bold flex items-center justify-center"></span>
+            <div>
+                <p id="my-name" class="font-bold text-slate-800 leading-tight">...</p>
+                <p class="text-xs text-slate-500">🎓 โซนนักเรียน</p>
+            </div>
+        </div>
+        <button onclick="logout()" class="text-xs bg-slate-200 hover:bg-slate-300 text-slate-600 px-3 py-1.5 rounded-full transition">ออกจากระบบ</button>
+    </header>
+
+    <!-- MY CARD -->
+    <div class="card p-6 mb-4 bg-gradient-to-r from-emerald-600 to-teal-500 text-white" id="my-card">
+        <div class="flex items-center gap-4">
+            <div id="my-pet" class="text-5xl" style="animation: bounce 2s infinite">🥚</div>
+            <div class="flex-1">
+                <p class="text-xs opacity-80">ระดับของฉัน</p>
+                <p id="my-level" class="text-xl font-bold">ดาวรุ่ง ⭐</p>
+                <div class="h-2.5 bg-white/30 rounded-full mt-1 overflow-hidden"><div id="my-progress" class="h-full bg-white" style="width:0%"></div></div>
+                <p id="my-xp-label" class="text-xs mt-1 opacity-90">0 XP</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="grid grid-cols-2 gap-3 mb-4">
+        <div class="card p-4"><p class="text-xs text-slate-500">🪙 XP ใช้ได้</p><p id="spendable" class="text-2xl font-bold text-amber-600">0</p></div>
+        <div class="card p-4"><p class="text-xs text-slate-500">🐾 คู่หูของฉัน</p><p id="pet-count" class="text-2xl font-bold text-violet-600">0</p></div>
+    </div>
+
+    <!-- Pets -->
+    <div class="card p-6 mb-4">
+        <h2 class="font-bold text-slate-700 mb-3">🐾 คู่หูของฉัน</h2>
+        <div id="my-pets" class="flex flex-wrap gap-2"><p class="text-sm text-slate-400">ยังไม่มีคู่หู — เปิดไข่ด้านล่างได้เลย!</p></div>
+    </div>
+
+    <!-- Shop -->
+    <div class="card p-6 mb-4">
+        <h2 class="font-bold text-slate-700 mb-4">🏪 ร้านคู่หู</h2>
+        <div id="shop-grid" class="grid grid-cols-2 sm:grid-cols-5 gap-3"></div>
+    </div>
+
+    <!-- My Rank -->
+    <div class="card p-6">
+        <h2 class="font-bold text-slate-700 mb-3">🏅 อันดับของฉันในห้อง</h2>
+        <div id="my-rank" class="text-sm text-slate-500">เลือกวิชาเพื่อดูอันดับ</div>
+        <label class="text-xs font-semibold text-slate-500 block mt-4 mb-1">วิชาของฉัน</label>
+        <select id="course-select" onchange="loadMyRank()" class="border border-slate-300 rounded-lg px-3 py-2 text-sm w-full bg-white"></select>
+    </div>
+</main>
+
+<div id="toast" class="fixed bottom-6 right-6 bg-slate-800 text-white px-5 py-3 rounded-xl shadow-xl hidden z-50 text-sm"></div>
+
+<script>
+const CLIENT_ID = '1043421437059-of9k7vt7hft5lf9vb1ffjlis3q6r4bd2.apps.googleusercontent.com';
+const SCOPES = [
+    'https://www.googleapis.com/auth/userinfo.profile',
+    'https://www.googleapis.com/auth/userinfo.email',
+    'https://www.googleapis.com/auth/classroom.courses.readonly',
+    'https://www.googleapis.com/auth/classroom.rosters.readonly',
+    'https://www.googleapis.com/auth/classroom.coursework.students.readonly',
+    'https://www.googleapis.com/auth/classroom.student-submissions.students.readonly',
+].join(' ');
+const API = 'https://classroom-hub-api.ekai.workers.dev';
+const HUB_KEY = localStorage.getItem('hubKey') || '';
+
+let token = null, myUid = null, myName = '', myCourses = [], central = null;
+
+const LEVELS = [
+    { min: 0, name: 'ดาวรุ่ง', icon: '⭐' },
+    { min: 200, name: 'นักสำรวจ', icon: '🧭' },
+    { min: 500, name: 'นักผจญภัย', icon: '🗺️' },
+    { min: 900, name: 'นักปราชญ์', icon: '📚' },
+    { min: 1400, name: 'ตำนานห้องเรียน', icon: '🏆' },
+];
+const SHOP_ITEMS = [
+    { id: 'egg_common', name: 'ไข่ธรรมดา', icon: '🥚', cost: 150 },
+    { id: 'egg_rare', name: 'ไข่หายาก', icon: '🥚✨', cost: 400 },
+    { id: 'food', name: 'อาหารคู่หู', icon: '🍖', cost: 80 },
+    { id: 'skin_gold', name: 'สกินทอง', icon: '👑', cost: 600 },
+    { id: 'streak_shield', name: 'โล่ป้องกัน', icon: '🛡️', cost: 250 },
+];
+const PET_CATALOG = {
+    common: [
+        { id: 'cat', name: 'ลูกแมวขี้อ้อน', img: 'img/pets/cat.png' },
+        { id: 'bunny', name: 'กระต่ายน้อย', img: 'img/pets/bunny.png' },
+        { id: 'panda', name: 'แพนด้าขี้เซา', img: 'img/pets/panda.png' },
+        { id: 'fox', name: 'จิ้งจอกส้ม', img: 'img/pets/fox.png' },
+        { id: 'penguin', name: 'เพนกวินจอมป่วน', img: 'img/pets/penguin.png' },
+        { id: 'turtle', name: 'เต่านักเรียน', img: 'img/pets/turtle.png' },
+    ],
+    rare: [
+        { id: 'unicorn', name: 'ยูนิคอร์นสายรุ้ง', img: 'img/pets/unicorn.png' },
+        { id: 'tiger', name: 'เสือขาวผู้กล้า', img: 'img/pets/tiger.png' },
+        { id: 'koala', name: 'โคอาล่านักฝัน', img: 'img/pets/koala.png' },
+        { id: 'eagle', name: 'อินทรีสายฟ้า', img: 'img/pets/eagle.png' },
+        { id: 'dolphin', name: 'โลมาประดับดาว', img: 'img/pets/dolphin.png' },
+    ],
+};
+
+function toast(m) {
+    const el = document.getElementById('toast');
+    el.textContent = m; el.classList.remove('hidden');
+    clearTimeout(el._t); el._t = setTimeout(() => el.classList.add('hidden'), 2500);
+}
+async function gapi(p) {
+    const r = await fetch(`https://classroom.googleapis.com/v1/${p}`, { headers: { Authorization: `Bearer ${token}` } });
+    if (!r.ok) throw new Error(`${r.status}`);
+    return r.json();
+}
+async function apiGet(p) { const r = await fetch(`${API}${p}`); if (!r.ok) throw new Error('api'); return r.json(); }
+async function apiPost(p, b) {
+    const r = await fetch(`${API}${p}`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(HUB_KEY ? { 'X-Hub-Key': HUB_KEY } : {}) }, body: JSON.stringify(b) });
+    if (!r.ok) throw new Error('api'); return r.json();
+}
+
+function login() {
+    google.accounts.oauth2.initTokenClient({
+        client_id: CLIENT_ID, scope: SCOPES,
+        callback: async (resp) => {
+            if (!resp.access_token) return;
+            token = resp.access_token;
+            document.getElementById('login-modal').classList.add('hidden');
+            document.getElementById('main').classList.remove('hidden');
+            try {
+                const p = await (await fetch('https://www.googleapis.com/oauth2/v2/userinfo', { headers: { Authorization: `Bearer ${token}` } })).json();
+                myName = p.name || 'นักเรียน';
+                document.getElementById('my-name').textContent = myName;
+                if (p.picture) {
+                    const img = document.getElementById('my-photo');
+                    img.src = p.picture; img.classList.remove('hidden');
+                    document.getElementById('my-initial').classList.add('hidden');
+                } else {
+                    document.getElementById('my-initial').textContent = myName.charAt(0);
+                }
+            } catch (e) { document.getElementById('my-initial').textContent = 'น'; }
+
+            try {
+                const data = await gapi('courses?pageSize=30&courseStates=ACTIVE&studentId=me');
+                myCourses = data.courses || [];
+                document.getElementById('course-select').innerHTML = '<option value="">-- เลือกวิชา --</option>' +
+                    myCourses.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+                if (myCourses.length) {
+                    document.getElementById('course-select').value = myCourses[0].id;
+                    await loadMyRank();
+                }
+            } catch (e) { toast('❌ โหลดวิชาไม่สำเร็จ'); }
+        }
+    }).requestAccessToken();
+}
+function logout() { if (token) google.accounts.oauth2.revoke(token, () => location.reload()); else location.reload(); }
+
+function levelOf(xp) { let lv = LEVELS[0]; for (const l of LEVELS) if (xp >= l.min) lv = l; return lv; }
+
+async function refreshCentral() {
+    try {
+        central = await apiGet(`/api/state/${encodeURIComponent(myUid)}`);
+        renderMyCard();
+        renderPets();
+        renderShop();
+    } catch (e) { console.warn('central unavailable', e); }
+}
+
+function renderMyCard() {
+    const xp = central?.totalXp || 0, sp = central?.spendable ?? xp;
+    const lv = levelOf(xp);
+    const next = LEVELS.find(l => l.min > xp);
+    document.getElementById('my-level').textContent = `${lv.name} ${lv.icon}`;
+    document.getElementById('my-progress').style.width = (next ? Math.min(100, Math.round((xp - lv.min) / (next.min - lv.min) * 100)) : 100) + '%';
+    document.getElementById('my-xp-label').textContent = `${xp} XP ${next ? `• อีก ${next.min - xp} ถึง ${next.name}` : '• ระดับสูงสุด!'}`;
+    document.getElementById('spendable').textContent = sp;
+    document.getElementById('pet-count').textContent = (central?.pets || []).length;
+    const pets = central?.pets || [];
+    document.getElementById('my-pet').innerHTML = pets.length ? `<img src="${pets[pets.length-1].img}" class="w-16 h-16 object-contain">` : '🥚';
+}
+
+function renderPets() {
+    const pets = central?.pets || [];
+    document.getElementById('my-pets').innerHTML = pets.length
+        ? pets.map(p => `<img src="${p.img}" title="${p.name}${p.stars>1?` ⭐${p.stars}`:''}" class="w-14 h-14 object-contain bg-white border border-slate-200 rounded-lg pet-pop cursor-pointer">`).join('')
+        : '<p class="text-sm text-slate-400">ยังไม่มีคู่หู — เปิดไข่ด้านล่างได้เลย!</p>';
+}
+
+function renderShop() {
+    document.getElementById('shop-grid').innerHTML = SHOP_ITEMS.map(it => `
+        <div class="border border-slate-200 rounded-xl p-3 text-center bg-white">
+            <div class="text-3xl mb-1">${it.icon}</div>
+            <p class="text-sm font-bold text-slate-700">${it.name}</p>
+            <button onclick="buy('${it.id}',${it.cost})" class="w-full mt-2 bg-amber-400 hover:bg-amber-500 text-amber-900 text-xs font-bold py-1.5 rounded-lg">🪙 ${it.cost} XP</button>
+        </div>`).join('');
+}
+
+async function buy(id, cost) {
+    try {
+        const r = await apiPost('/api/spend', { uid: myUid, cost });
+        if (!r.ok) { toast('❌ XP ไม่พอ'); return; }
+        if (id === 'egg_common' || id === 'egg_rare') {
+            const pool = id === 'egg_common' ? PET_CATALOG.common : PET_CATALOG.rare;
+            const owned = new Set((central?.pets || []).map(p => p.petId));
+            const newOnes = pool.filter(p => !owned.has(p.id));
+            const rolled = newOnes.length ? newOnes[Math.floor(Math.random() * newOnes.length)] : pool[Math.floor(Math.random() * pool.length)];
+            await apiPost('/api/pet', { uid: myUid, petId: rolled.id, name: rolled.name, img: rolled.img, stars: 1 });
+            toast(`🎉 ได้คู่หูใหม่: ${rolled.name}!`);
+        } else {
+            toast('🛒 ซื้อสำเร็จ!');
+        }
+        await refreshCentral();
+    } catch (e) { toast('❌ ทำรายการไม่สำเร็จ'); }
+}
+
+async function loadMyRank() {
+    const cid = document.getElementById('course-select').value;
+    const el = document.getElementById('my-rank');
+    if (!cid) { el.textContent = 'เลือกวิชาเพื่อดูอันดับ'; return; }
+    try {
+        // gather own submissions across all works to compute my XP in this course
+        const wData = await gapi(`courses/${cid}/courseWork?pageSize=30`);
+        let xp = 0;
+        for (const w of (wData.courseWork || [])) {
+            const sd = await gapi(`courses/${cid}/courseWork/${w.id}/studentSubmissions?userId=me&pageSize=1`);
+            (sd.studentSubmissions || []).forEach(s => {
+                if (s.state === 'CREATED' || s.state === 'NEW') return;
+                xp += s.late ? 20 : 50;
+                const g = s.assignedGrade ?? s.draftGrade;
+                if (g != null && g / (w.maxPoints || 100) >= 0.8) xp += 30;
+            });
+        }
+        el.innerHTML = `ในวิชานี้คุณสะสมได้ <b class="text-brand-600 text-lg">${xp} XP</b>`;
+        await refreshCentral();
+    } catch (e) { el.textContent = 'โหลดอันดับไม่สำเร็จ'; }
+}
+
+// identify my uid from first course roster (Classroom userId = our uid)
+async function findMyUid() {
+    if (!myCourses.length) return;
+    try {
+        const data = await gapi(`courses/${myCourses[0].id}/students?pageSize=30`);
+        const me = (data.students || []).find(s => s.profile.name.fullName === myName);
+        if (me) { myUid = me.userId; await refreshCentral(); }
+    } catch (e) { console.warn(e); }
+}
+const _origLoadMyRank = loadMyRank;
+loadMyRank = async function() { await _origLoadMyRank(); if (!myUid) await findMyUid(); };
+</script>
+</body>
+</html>

@@ -256,19 +256,24 @@ async function loadMyRank() {
     try {
         // gather own submissions across all works to compute my XP in this course
         const wData = await gapi(`courses/${cid}/courseWork?pageSize=30`);
-        let xp = 0;
+        let xp = 0, works = 0;
         for (const w of (wData.courseWork || [])) {
-            const sd = await gapi(`courses/${cid}/courseWork/${w.id}/studentSubmissions?userId=me&pageSize=1`);
-            (sd.studentSubmissions || []).forEach(s => {
-                if (s.state === 'CREATED' || s.state === 'NEW') return;
-                xp += s.late ? 20 : 50;
-                const g = s.assignedGrade ?? s.draftGrade;
+            works++;
+            try {
+                const sd = await gapi(`courses/${cid}/courseWork/${w.id}/studentSubmissions?pageSize=100`);
+                // find my own submission (API may ignore userId param for students)
+                const mine = (sd.studentSubmissions || []).find(s => s.userId === myUid) || (sd.studentSubmissions || [])[0];
+                if (!mine) continue;
+                if (mine.state === 'CREATED' || mine.state === 'NEW') continue;
+                xp += mine.late ? 20 : 50;
+                const g = mine.assignedGrade ?? mine.draftGrade;
                 if (g != null && g / (w.maxPoints || 100) >= 0.8) xp += 30;
-            });
+            } catch (e) { console.warn('skip work', w.id, e); continue; }
         }
-        el.innerHTML = `ในวิชานี้คุณสะสมได้ <b class="text-brand-600 text-lg">${xp} XP</b>`;
+        if (!works) { el.textContent = 'วิชานี้ยังไม่มีงาน'; return; }
+        el.innerHTML = `ในวิชานี้คุณสะสมได้ <b class="text-brand-600 text-lg">${xp} XP</b> (จาก ${works} งาน)`;
         await refreshCentral();
-    } catch (e) { el.textContent = 'โหลดอันดับไม่สำเร็จ'; }
+    } catch (e) { el.textContent = 'โหลดอันดับไม่สำเร็จ — ลองเลือกวิชาใหม่'; }
 }
 
 // identify my uid from first course roster (Classroom userId = our uid)

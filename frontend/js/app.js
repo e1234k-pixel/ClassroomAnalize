@@ -1,6 +1,8 @@
 /* ═══ Classroom Hub — App Logic ═══ */
 const CLIENT_ID = '1043421437059-of9k7vt7hft5lf9vb1ffjlis3q6r4bd2.apps.googleusercontent.com';
 const SCOPES = [
+    'https://www.googleapis.com/auth/userinfo.profile',
+    'https://www.googleapis.com/auth/userinfo.email',
     'https://www.googleapis.com/auth/classroom.courses.readonly',
     'https://www.googleapis.com/auth/classroom.rosters.readonly',
     'https://www.googleapis.com/auth/classroom.coursework.students.readonly',
@@ -30,16 +32,61 @@ async function afterLogin() {
     document.getElementById('login-modal').classList.add('hidden');
     document.getElementById('main-content').classList.remove('hidden');
     try {
+        // 1) userinfo endpoint (may fail if scope missing)
         const r = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
             headers: { Authorization: `Bearer ${accessToken}` }
         });
-        const p = await r.json();
-        document.getElementById('user-photo').src = p.picture || '';
-        document.getElementById('user-name').textContent = p.name || '';
-        document.getElementById('user-info').classList.remove('hidden');
-        document.getElementById('user-info').classList.add('flex');
-    } catch (e) { console.error(e); }
+        if (r.ok) {
+            const p = await r.json();
+            setUserProfile(p.picture, p.name);
+        } else {
+            // 2) fallback: decode ID token from GIS or fetch people/me
+            throw new Error('userinfo not allowed');
+        }
+    } catch (e) {
+        // fallback: try People API (profile scope) then anonymous initials
+        try {
+            const r2 = await fetch('https://people.googleapis.com/v1/people/me?personFields=names,photos,emailAddresses', {
+                headers: { Authorization: `Bearer ${accessToken}` }
+            });
+            if (r2.ok) {
+                const p2 = await r2.json();
+                const photo = p2.photos?.find(x => x.metadata?.primary)?.url || '';
+                const name = p2.names?.find(x => x.metadata?.primary)?.displayName || 'ครู';
+                setUserProfile(photo, name);
+            } else {
+                setUserProfile('', 'ครูผู้สอน');
+            }
+        } catch (e2) {
+            setUserProfile('', 'ครูผู้สอน');
+        }
+    }
     loadCourses();
+}
+
+function setUserProfile(photo, name) {
+    const img = document.getElementById('user-photo');
+    if (photo) {
+        img.src = photo;
+        img.onerror = () => { img.style.display = 'none'; };
+        img.style.display = '';
+    } else {
+        // letter avatar fallback
+        const initial = (name || 'ค').trim().charAt(0);
+        img.removeAttribute('src');
+        img.style.display = 'none';
+        let badge = document.getElementById('user-initial');
+        if (!badge) {
+            badge = document.createElement('span');
+            badge.id = 'user-initial';
+            badge.className = 'w-7 h-7 rounded-full bg-brand-600 text-white text-xs font-bold flex items-center justify-center';
+            document.getElementById('user-info').prepend(badge);
+        }
+        badge.textContent = initial;
+    }
+    document.getElementById('user-name').textContent = name || '';
+    document.getElementById('user-info').classList.remove('hidden');
+    document.getElementById('user-info').classList.add('flex');
 }
 
 function handleGoogleLogout() {

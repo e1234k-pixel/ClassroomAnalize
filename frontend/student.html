@@ -105,7 +105,7 @@ const SCOPES = [
 const API = 'https://classroom-hub-api.ekai.workers.dev';
 const HUB_KEY = localStorage.getItem('hubKey') || '';
 
-let token = null, myUid = null, myName = '', myCourses = [], central = null;
+let token = null, myUid = null, myName = '', myEmail = '', myCourses = [], central = null;
 
 const LEVELS = [
     { min: 0, name: 'ดาวรุ่ง', icon: '⭐' },
@@ -166,6 +166,7 @@ function login() {
             try {
                 const p = await (await fetch('https://www.googleapis.com/oauth2/v2/userinfo', { headers: { Authorization: `Bearer ${token}` } })).json();
                 myName = p.name || 'นักเรียน';
+                myEmail = p.email || '';
                 document.getElementById('my-name').textContent = myName;
                 if (p.picture) {
                     const img = document.getElementById('my-photo');
@@ -276,22 +277,37 @@ async function loadMyRank() {
     } catch (e) { el.textContent = 'โหลดอันดับไม่สำเร็จ — ลองเลือกวิชาใหม่'; }
 }
 
-// identify my uid: Classroom userId from my own submissions (most reliable)
+// identify my uid: best source = roster of my course (always contains me)
 async function findMyUid() {
     if (myUid) return myUid;
     if (!myCourses.length) return null;
     try {
-        // try each course until we find a submission with a userId
+        // 1) roster lookup (works even with zero submissions)
+        for (const c of myCourses.slice(0, 5)) {
+            try {
+                let pt = null, all = [];
+                do {
+                    const d = await gapi(`courses/${c.id}/students?pageSize=30${pt ? `&pageToken=${pt}` : ''}`);
+                    all = all.concat(d.students || []);
+                    pt = d.nextPageToken || null;
+                } while (pt);
+                // match by email (most reliable) then name
+                const me = all.find(s =>
+                    (myEmail && s.profile.emailAddress === myEmail) ||
+                    (myName && s.profile.name.fullName === myName)
+                );
+                if (me) { myUid = me.userId; await refreshCentral(); return myUid; }
+            } catch (e) { continue; }
+        }
+        // 2) fallback: find userId from my own submissions
         for (const c of myCourses.slice(0, 5)) {
             try {
                 const wData = await gapi(`courses/${c.id}/courseWork?pageSize=5`);
                 for (const w of (wData.courseWork || []).slice(0, 3)) {
                     try {
                         const sd = await gapi(`courses/${c.id}/courseWork/${w.id}/studentSubmissions?pageSize=100`);
-                        const subs = sd.studentSubmissions || [];
-                        // as a student, submissions visible are mostly mine; prefer state != CREATED
-                        const cand = subs.find(s => s.userId) ;
-                        if (cand) { myUid = cand.userId; return myUid; }
+                        const cand = (sd.studentSubmissions || []).find(s => s.userId);
+                        if (cand) { myUid = cand.userId; await refreshCentral(); return myUid; }
                     } catch (e) { continue; }
                 }
             } catch (e) { continue; }

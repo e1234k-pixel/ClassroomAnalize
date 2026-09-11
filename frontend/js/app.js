@@ -616,6 +616,54 @@ function buildQuickWin(uid) {
         </div>`).join('');
 }
 
+/* ═══ Teacher XP Sync: pull Classroom → compute deltas → push to D1 ═══ */
+let _syncing = false;
+async function teacherXPSync() {
+    if (_syncing) return;
+    if (!currentCourseId || !assignments.length) { toast('เลือกวิชาก่อน'); return; }
+    const btn = document.getElementById('btn-xp-sync');
+    _syncing = true;
+    const orig = btn.textContent; btn.textContent = '⏳ กำลังซิงค์...'; btn.disabled = true;
+
+    try {
+        let pushed = 0, skipped = 0, affected = new Set();
+        for (const a of assignments) {
+            const data = await gapi(`courses/${currentCourseId}/courseWork/${a.id}/studentSubmissions?pageSize=100`);
+            const subs = data.studentSubmissions || [];
+            for (const s of subs) {
+                const missing = s.state === 'CREATED' || s.state === 'NEW';
+                if (missing) continue;
+                const maxPts = a.maxPoints || 100;
+                const grade = s.assignedGrade ?? s.draftGrade;
+                let amount = s.late ? 20 : 50;
+                let event = s.late ? 'sent_late' : 'sent_ontime';
+                if (grade != null && grade / maxPts >= 0.8) { amount += 30; event += '+grade_high'; }
+                if (amount <= 0) continue;
+                try {
+                    const r = await apiPost('/api/xp', { uid: s.userId, event, amount, workId: a.id, state: s.state, grade: grade ?? null });
+                    if (r.ok && !r.skipped) { pushed += amount; affected.add(s.userId); }
+                    else skipped++;
+                } catch (e) { console.warn('xp push failed', e); }
+            }
+        }
+        if (pushed > 0) toast(`🔄 ซิงค์สำเร็จ: +${pushed} XP ให้ ${affected.size} คน${skipped ? ` (ข้ามที่ซ้ำ ${skipped})` : ''}`);
+        else toast('✅ ข้อมูลตรงกันอยู่แล้ว ไม่มี XP เพิ่มใหม่');
+        localStorage.setItem('lastSync', Date.now());
+        updateSyncLabel();
+    } catch (e) {
+        console.error(e);
+        toast('❌ ซิงค์ไม่สำเร็จ ลองอีกครั้ง');
+    } finally {
+        _syncing = false; btn.textContent = orig; btn.disabled = false;
+    }
+}
+function updateSyncLabel() {
+    const el = document.getElementById('last-sync');
+    if (!el) return;
+    const t = localStorage.getItem('lastSync');
+    el.textContent = t ? `อัปเดตล่าสุด: ${new Date(+t).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}` : 'ยังไม่เคยซิงค์';
+}
+
 /* ═══ Gamification: XP / Streak / Badges ═══ */
 async function loadAllSubmissions() {
     // fetch submissions for every assignment in the current course
@@ -745,6 +793,7 @@ async function buildQuests() {
     buildShop();
     buildQuestsPanel();
     buildQuickWin(null);
+    updateSyncLabel();
 }
 
 function showQuestDetail() {

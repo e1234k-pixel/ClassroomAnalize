@@ -284,7 +284,11 @@
             <div class="card p-6 lg:col-span-2">
                 <div class="flex items-center justify-between mb-4">
                     <h2 class="font-bold text-slate-700">🏪 ร้านคู่หู (แลกด้วย XP)</h2>
-                    <span id="shop-balance" class="text-sm font-bold text-amber-600 bg-amber-50 px-3 py-1 rounded-full">เลือกนักเรียนเพื่อดู XP</span>
+                    <div class="flex items-center gap-2">
+                        <span id="last-sync" class="text-xs text-slate-400"></span>
+                        <button id="btn-xp-sync" onclick="teacherXPSync()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-2 rounded-lg shadow transition">🔄 รีเฟรชข้อมูล XP</button>
+                        <span id="shop-balance" class="text-sm font-bold text-amber-600 bg-amber-50 px-3 py-1 rounded-full">เลือกนักเรียนเพื่อดู XP</span>
+                    </div>
                 </div>
                 <div id="shop-grid" class="grid grid-cols-2 sm:grid-cols-5 gap-3"></div>
                 <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">

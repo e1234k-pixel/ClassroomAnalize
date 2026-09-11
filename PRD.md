@@ -216,6 +216,36 @@ classroom-hub/
 - หน้าใหม่: แท็บที่ 5 "🏆 Quests & Badges" + เพิ่ม XP/Streak ใน Student Slip
 - เก็บ XP ใน localStorage ตอนนี้ → ย้ายไป backend SQLite เมื่อเปิดใช้ backend
 - **สถานะ: ทำ Phase 1 เสร็จแล้ว (deploy แล้ว)** — แท็บ 🏆 Quests & Badges: Leaderboard Top 10, XP/Level/Streak ต่อคน, Badge auto-award (เพอร์เฟกต์/พัฒนาตัวเอง/เจ้าตาราง/นักส่งมืออาชีพ), Weekly Quest (อัตราส่งงานทั้งห้อง ≥90% = XP x2), การ์ดนักเรียนแบบ XP bar
+- **Phase 2 เสร็จแล้ว:** ร้านคู่หู (ไข่กาชา 11 ตัว + สกินทอง 7 วัน + โล่ป้องกัน Streak), Pity System การันตีตัวใหม่ครั้งที่ 5, Quick Win ภารกิจกลุ่มเสี่ยง, XP หักถาวรแบบ spent ledger, ภาพคู่หูจริงแทน emoji
+
+### 6.8 XP Sync Engine — อัปเดต XP เมื่อครูให้คะแนนใน Classroom (แผนระยะถัดไป)
+
+**ปัญหา:** XP คำนวณจากข้อมูล Classroom ตอนเปิดหน้าเว็บ — ถ้าครูให้คะแนนใหม่แต่ไม่มีใครเปิดหน้าเว็บ นักเรียนจะเห็น XP เก่า
+
+**โซลูชัน 3 ชั้น (แนะนำทำรวมกัน):**
+
+1. **Pull on Open (มีอยู่แล้ว):** ทุกครั้งที่เปิดหน้า/เลือกวิชา ระบบดึงข้อมูลใหม่จาก Classroom API แล้วคำนวณ XP ใหม่ — แม่นยำ 100% แต่ขึ้นกับว่ามีคนเปิดเว็บ
+
+2. **Scheduled Sync (Cloudflare Cron Trigger — ฟรี):** Worker รันทุก 15-30 นาที ดึง submissions ทั้งหมด → คำนวณ XP → เขียนลง D1 → นักเรียนเปิดเว็บเจอข้อมูลล่าสุดเสมอ (ตัวนับ "อัปเดตล่าสุด X นาทีที่แล้ว" บนหน้าเว็บ)
+
+3. **Push Realtime (แนวโน้มสูง):**
+   - ครูกด "รีเฟรชข้อมูล" ในแดชบอร์ด → sync ทันที
+   - นักเรียนเปิดหน้าค้างไว้ → Worker ใช้ SSE/polling ทุก 1-2 นาที เช็คค่า XP ใน D1 → ถ้าเปลี่ยน เด้ง animation "+50 XP! ครูให้คะแนนงานใหม่" เหมือนได้ของรางวัลสดๆ
+
+**Event ที่ทำให้ XP เปลี่ยน:** ครู patch assignedGrade (งานถูกตรวจแล้ว → +30 XP ถ้า ≥80%), return งาน, นักเรียนส่งงานใหม่ (TURNED_IN → +50/+20), สายส่งต่อเนื่องครบสัปดาห์ (+100)
+
+**การไล่ระดับ (ต้องมี Worker + D1 ก่อน ตามแผน Student Login ระยะ 1):**
+```
+ครูให้คะแนนใน Classroom
+   ↓ (ทุก 15-30 นาที หรือเมื่อครูกดรีเฟรช)
+Cloudflare Worker ดึง studentSubmissions จาก Classroom API
+   ↓ คำนวณ delta XP ต่อนักเรียน (เทียบกับค่าเก่าใน D1)
+D1: xp_events table (uid, event, amount, workId, timestamp)
+   ↓ นักเรียนเปิดหน้า / SSE push
+หน้านักเรียน: การ์ดเด้ง "+80 XP! ครูตรวจงาน Lab 3 แล้ว" + คู่หูทำท่าดีใจ
+```
+
+**กติกาสำคัญ:** XP เคยคำนวณแล้วต้องไม่นับซ้ำ — เก็บ `workId+state+grade` ล่าสุดต่อ submission ใน D1 เป็น fingerprint ถ้าเหมือนเดิม = ข้าม
 
 ---
 
@@ -225,7 +255,9 @@ classroom-hub/
 |---|---|
 | สูง | ต่อ Grading Studio: นับงานค้างข้าม assignment, โหลดงานหลายงานพร้อมกัน (ปัจจุบัน count pending ทำ per-request loop ช้า) |
 | สูง | AI Feedback จริง: เชื่อม LongCat-2.0 (สร้าง key ใหม่, เก็บใน env) |
-| สูง | 🏆 Gamification Phase 2: สัตว์เลี้ยงกิน XP + ร้านค้า + ภารกิจเฉพาะกลุ่มเสี่ยง (quick win) |
+| สูง | 🏆 Gamification Phase 2: สัตว์เลี้ยงกิน XP + ร้านค้า + ภารกิจเฉพาะกลุ่มเสี่ยง (quick win) — ✅ เสร็จแล้ว |
+| สูง | 🎭 Student Login: ระบบบทบาทครู/นักเรียน + Cloudflare Worker API + D1 เก็บ XP กลาง (ระยะ 1-3) |
+| สูง | 🔄 XP Sync Engine: ระบบอัปเดต XP อัตโนมัติเมื่อครูให้คะแนนใน Classroom (อธิบายใน PRD §6.8) |
 | กลาง | Export PDF ปพ.5 จริง (เช่น jsPDF / SheetJS) |
 | กลาง | Custom Domain `classroom.eknarin.com` (CNAME → classroomanalize.pages.dev) |
 | กลาง | 🏆 Gamification Phase 1: XP + Streak + Student Slip (คำนวณจาก submissions ที่มีอยู่) |

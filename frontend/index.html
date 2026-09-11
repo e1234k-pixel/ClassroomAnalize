@@ -88,6 +88,10 @@
 <main id="main-content" class="hidden max-w-7xl mx-auto px-4 py-6">
 
     <!-- Stat Cards -->
+    <div class="flex items-center justify-between mb-3">
+        <h2 class="text-sm font-semibold text-slate-500">ภาพรวมการสอนของฉัน</h2>
+        <button onclick="teacherXPSync(true)" id="btn-sync-all" class="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold px-4 py-2 rounded-xl shadow transition">🔄 รีเฟรชข้อมูล XP ทุกวิชา</button>
+    </div>
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <div class="card p-4 fade-in"><p class="text-xs text-slate-500 mb-1">📚 วิชาที่สอน</p><p id="stat-courses" class="text-2xl font-bold text-brand-600">-</p></div>
         <div class="card p-4 fade-in"><p class="text-xs text-slate-500 mb-1">👥 นักเรียนรวม</p><p id="stat-students" class="text-2xl font-bold text-emerald-600">-</p></div>

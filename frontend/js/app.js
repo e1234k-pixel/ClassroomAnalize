@@ -834,32 +834,44 @@ function buildQuickWin(uid) {
 
 /* ═══ Teacher XP Sync: pull Classroom → compute deltas → push to D1 ═══ */
 let _syncing = false;
-async function teacherXPSync() {
+async function teacherXPSync(allCourses = false) {
     if (_syncing) return;
-    if (!currentCourseId || !assignments.length) { toast('เลือกวิชาก่อน'); return; }
+    const targets = allCourses ? courses : [ { id: currentCourseId } ].filter(c => c.id);
+    if (!targets.length || (allCourses && !courses.length)) { toast('ยังไม่มีวิชาให้ซิงค์'); return; }
     const btn = document.getElementById('btn-xp-sync');
     _syncing = true;
     const orig = btn.textContent; btn.textContent = '⏳ กำลังซิงค์...'; btn.disabled = true;
 
     try {
-        let pushed = 0, skipped = 0, affected = new Set();
-        for (const a of assignments) {
-            const data = await gapi(`courses/${currentCourseId}/courseWork/${a.id}/studentSubmissions?pageSize=100`);
-            const subs = data.studentSubmissions || [];
-            for (const s of subs) {
-                const missing = s.state === 'CREATED' || s.state === 'NEW';
-                if (missing) continue;
-                const maxPts = a.maxPoints || 100;
-                const grade = s.assignedGrade ?? s.draftGrade;
-                let amount = s.late ? 20 : 50;
-                let event = s.late ? 'sent_late' : 'sent_ontime';
-                if (grade != null && grade / maxPts >= 0.8) { amount += 30; event += '+grade_high'; }
-                if (amount <= 0) continue;
-                try {
-                    const r = await apiPost('/api/xp', { uid: s.userId, event, amount, workId: a.id, state: s.state, grade: grade ?? null });
-                    if (r.ok && !r.skipped) { pushed += amount; affected.add(s.userId); }
-                    else skipped++;
-                } catch (e) { console.warn('xp push failed', e); }
+        let pushed = 0, skipped = 0;
+        const affected = new Set();
+        for (const c of targets) {
+            const cid = c.id;
+            // fetch all works (paginated)
+            let works = [], pt = null;
+            do {
+                const wd = await gapi(`courses/${cid}/courseWork?pageSize=30${pt ? `&pageToken=${pt}` : ''}`);
+                works = works.concat(wd.courseWork || []);
+                pt = wd.nextPageToken || null;
+            } while (pt);
+            for (const a of works) {
+                const data = await gapi(`courses/${cid}/courseWork/${a.id}/studentSubmissions?pageSize=100`);
+                const subs = data.studentSubmissions || [];
+                for (const s of subs) {
+                    const missing = s.state === 'CREATED' || s.state === 'NEW';
+                    if (missing) continue;
+                    const maxPts = a.maxPoints || 100;
+                    const grade = s.assignedGrade ?? s.draftGrade;
+                    let amount = s.late ? 20 : 50;
+                    let event = s.late ? 'sent_late' : 'sent_ontime';
+                    if (grade != null && grade / maxPts >= 0.8) { amount += 30; event += '+grade_high'; }
+                    if (amount <= 0) continue;
+                    try {
+                        const r = await apiPost('/api/xp', { uid: s.userId, event, amount, workId: a.id, state: s.state, grade: grade ?? null });
+                        if (r.ok && !r.skipped) { pushed += amount; affected.add(s.userId); }
+                        else skipped++;
+                    } catch (e) { console.warn('xp push failed', e); }
+                }
             }
         }
         if (pushed > 0) toast(`🔄 ซิงค์สำเร็จ: +${pushed} XP ให้ ${affected.size} คน${skipped ? ` (ข้ามที่ซ้ำ ${skipped})` : ''}`);

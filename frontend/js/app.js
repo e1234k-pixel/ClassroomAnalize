@@ -431,12 +431,34 @@ function buyItem(id) {
     } else {
         const inv = getInventory(uid);
         inv[id] = (inv[id] || 0) + 1;
+        // consumable effects
+        if (id === 'skin_gold') {
+            const until = Date.now() + 7 * 24 * 60 * 60 * 1000;
+            const skins = JSON.parse(localStorage.getItem('goldSkin') || '{}');
+            skins[uid] = until;
+            localStorage.setItem('goldSkin', JSON.stringify(skins));
+            toast('👑 สกินทองเปิดใช้แล้ว! ชื่อของคุณจะเรืองแสงทอง 7 วัน');
+        } else if (id === 'streak_shield') {
+            toast('🛡️ โล่พร้อม! ครั้งหน้าถ้าส่งงานพลาด Streak จะไม่ถูกรีเซ็ต');
+        } else if (id === 'food') {
+            toast('🍖 คู่หูได้กำลังใจเพิ่ม!');
+        } else {
+            toast(`🛒 ซื้อ ${item.name} สำเร็จ!`);
+        }
         saveInventory(uid, inv);
-        if (id === 'food') toast('🍖 คู่หูได้กำลังใจเพิ่ม!');
-        else toast(`🛒 ซื้อ ${item.name} สำเร็จ!`);
     }
     showQuestDetail();
     buildQuestsPanel();
+}
+
+/* Gold skin check: uid has active gold frame? */
+function hasGoldSkin(uid) {
+    const skins = JSON.parse(localStorage.getItem('goldSkin') || '{}');
+    return skins[uid] && skins[uid] > Date.now();
+}
+function goldDaysLeft(uid) {
+    const skins = JSON.parse(localStorage.getItem('goldSkin') || '{}');
+    return skins[uid] ? Math.ceil((skins[uid] - Date.now()) / (24 * 60 * 60 * 1000)) : 0;
 }
 
 function buildQuestsPanel() {
@@ -606,9 +628,14 @@ async function buildQuests() {
         const petRow = myPets.length
             ? myPets.slice(0, 4).map(p => petImg(p, 'w-8 h-8 bg-white border border-slate-200', 'hover:scale-125 transition')).join('') + (myPets.length > 4 ? `<span class="text-xs text-slate-400 ml-0.5">+${myPets.length - 4}</span>` : '')
             : '';
-        return `<tr class="hover:bg-slate-50">
+        const gold = hasGoldSkin(d.uid);
+        const shields = (getInventory(d.uid).streak_shield || 0);
+        const nameCell = gold
+            ? `<span class="inline-flex items-center gap-1 bg-gradient-to-r from-yellow-200 to-amber-300 border-2 border-yellow-400 rounded-lg px-2 py-0.5 shadow" title="สกินทอง เหลือ ${goldDaysLeft(d.uid)} วัน">👑 <span class="font-bold text-amber-700">${d.name}</span></span>`
+            : d.name;
+        return `<tr class="hover:bg-slate-50 ${gold ? 'bg-gradient-to-r from-yellow-50/60 to-transparent' : ''}">
             <td class="px-4 py-2.5 text-center text-lg">${medal}</td>
-            <td class="px-4 py-2.5 font-medium text-slate-700"><span class="text-xl mr-1">${pet}</span>${d.name}${petRow ? `<span class="ml-2 inline-flex items-center gap-0.5">${petRow}</span>` : ''}</td>
+            <td class="px-4 py-2.5 font-medium text-slate-700"><span class="text-xl mr-1">${pet}</span>${nameCell}${petRow ? `<span class="ml-2 inline-flex items-center gap-0.5">${petRow}</span>` : ''}${shields ? `<span class="ml-1 text-xs" title="มีโล่ป้องกัน Streak ${shields} ชิ้น">🛡️×${shields}</span>` : ''}</td>
             <td class="px-4 py-2.5 text-center">${lv.icon} <b>${lv.name}</b></td>
             <td class="px-4 py-2.5 text-center font-bold text-brand-600">${d.xp} XP</td>
             <td class="px-4 py-2.5 text-center">${d.streak > 0 ? `🔥 ${d.streak}` : '-'}</td>
@@ -665,7 +692,7 @@ function showQuestDetail() {
             <div class="bg-amber-50 rounded-lg p-2">⏰ ส่งช้า<br><b>${d.late}</b></div>
             <div class="bg-rose-50 rounded-lg p-2">❌ ยังไม่ส่ง<br><b>${d.missing}</b></div>
         </div>
-        <p class="text-sm text-slate-600 mb-1">🔥 Streak: <b>${d.streak}</b> งานต่อเนื่อง</p>
+        <p class="text-sm text-slate-600 mb-1">🔥 Streak: <b>${d.streak}</b> งานต่อเนื่อง ${(() => { const sh = getInventory(uid).streak_shield || 0; return sh ? `<span class="text-emerald-600 text-xs">🛡️ มีโล่ ${sh} ชิ้น (พลาดส่งครั้งหน้า Streak จะไม่รีเซ็ต)</span>` : ''; })()}</p>
         <div class="flex flex-wrap gap-2 mb-3">${d.badges.map(b => `<span class="bg-violet-100 text-violet-800 text-xs px-2 py-1 rounded-full">${b.icon} ${b.name}</span>`).join('') || '<span class="text-xs text-slate-400">ยังไม่มีป้าย — ส่งงานตรงเวลาเพื่อสะสมป้ายแรก!</span>'}</div>
         <div class="bg-slate-50 border border-slate-200 rounded-xl p-3">
             <p class="text-xs font-semibold text-slate-500 mb-1.5">🐾 คู่หูของฉัน (${getPets(uid).length} ตัว):</p>

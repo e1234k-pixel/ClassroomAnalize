@@ -424,7 +424,7 @@ function buyItem(id) {
         const dupe = pets.filter(p => p.petId === rolled.id).length;
         pets.push({ petId: rolled.id, name: rolled.name, icon: rolled.icon, stars: dupe + 1, acquired: Date.now() });
         savePets(uid, pets);
-        toast(`🎉 ได้คู่หูใหม่: ${rolled.icon} ${rolled.name}${dupe > 0 ? ` (⭐${dupe + 1})` : ''}!`);
+        showEggReveal(rolled, dupe > 0 ? dupe + 1 : 0, id === 'egg_rare');
     } else {
         const inv = getInventory(uid);
         inv[id] = (inv[id] || 0) + 1;
@@ -443,11 +443,54 @@ function buildQuestsPanel() {
     if (!uid || !_gamified || !_gamified[uid]) { el.textContent = 'เลือกนักเรียนเพื่อดู XP'; return; }
     const spendable = Math.max(0, _gamified[uid].xp - getSpent(uid));
     const pets = getPets(uid);
-    const petIcons = pets.map(p => p.icon).join(' ') || 'ยังไม่มีคู่หู';
-    el.innerHTML = `🪙 ${spendable} XP <span class="text-xs text-slate-400 ml-1">(สะสม ${_gamified[uid].xp} - ใช้ไป ${getSpent(uid)})</span><br><span class="text-base">${petIcons}</span>`;
+    const petChips = pets.length
+        ? pets.map((p, i) => `<span class="relative inline-block text-2xl pet-pop cursor-pointer" title="${p.name}${p.stars > 1 ? ` ⭐×${p.stars}` : ''}" onclick="petSay('${p.name}','${p.icon}')">${p.icon}${p.stars > 1 ? `<span class="absolute -bottom-1 -right-1 text-[10px]">⭐${p.stars}</span>` : ''}</span>`).join(' ')
+        : '<span class="text-xs text-slate-400">ยังไม่มีคู่หู — เปิดไข่แรกได้เลย!</span>';
+    el.innerHTML = `🪙 ${spendable} XP <span class="text-xs text-slate-400 ml-1">(สะสม ${_gamified[uid].xp} - ใช้ไป ${getSpent(uid)})</span><br><span class="text-base">${petChips}</span>`;
 }
 
-/* Quick Win quests for at-risk students */
+function petSay(name, icon) {
+    const lines = ['อยากกินขนม 🍪', 'ส่งงานอีกแล้วได้ XP นะ!', 'วันนี้เก่งมากเลย!', 'ขอออกไปเล่นน้ำ 😊', 'มาลากันเล่นไหม?', 'ขอโอบหน่อยยย~'];
+    toast(`${icon} ${name}: "${lines[Math.floor(Math.random() * lines.length)]}"`);
+}
+
+/* ═══ Egg reveal animation (gacha-style) ═══ */
+function showEggReveal(pet, stars, isRare) {
+    const existing = document.getElementById('egg-reveal-overlay');
+    if (existing) existing.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'egg-reveal-overlay';
+    overlay.className = 'fixed inset-0 z-[60] flex items-center justify-center';
+    overlay.style.cssText = 'background:rgba(15,23,42,0.85);backdrop-filter:blur(6px)';
+    overlay.innerHTML = `
+        <div class="text-center px-4">
+            <div id="egg-anim" class="text-8xl md:text-9xl mx-auto" style="animation: eggShake .4s infinite">🥚</div>
+            <p id="egg-status" class="text-white text-lg mt-6 font-medium">กำลังเปิดไข่${isRare ? 'หายาก ✨' : ''}...</p>
+        </div>`;
+    document.body.appendChild(overlay);
+
+    // crack sequence
+    setTimeout(() => { overlay.querySelector('#egg-anim').textContent = '🥚'; }, 800);
+    setTimeout(() => { overlay.querySelector('#egg-anim').textContent = '🐣'; }, 1600);
+    // reveal!
+    setTimeout(() => {
+        const shine = isRare
+            ? 'radial-gradient(circle, rgba(255,215,0,.55) 0%, rgba(168,85,247,.35) 45%, transparent 70%)'
+            : 'radial-gradient(circle, rgba(139,92,246,.5) 0%, rgba(59,110,245,.3) 45%, transparent 70%)';
+        overlay.innerHTML = `
+            <div class="text-center px-4 fade-in">
+                <div class="mx-auto mb-4 flex items-center justify-center" style="width:260px;height:260px;border-radius:50%;background:${shine}">
+                    <div class="text-[110px] md:text-[130px]" style="animation: bounce 1.2s infinite;filter:drop-shadow(0 8px 24px rgba(0,0,0,.4))">${pet.icon}</div>
+                </div>
+                <p class="text-3xl font-bold text-white">${pet.name}${stars > 1 ? ` <span class="text-yellow-300">⭐×${stars}</span>` : ''}</p>
+                <p class="text-sm mt-2 ${isRare ? 'text-yellow-300' : 'text-violet-200'}">${isRare ? '✨ คู่หูหายาก! คุณโชคดีมาก!' : '🎉 ได้คู่หูใหม่แล้ว!'}</p>
+                <p class="text-xs text-slate-300 mt-1">เพื่อนคู่หูนี้จะอยู่กับคุณตลอดการเรียน</p>
+                <button onclick="this.closest('#egg-reveal-overlay').remove();buildQuestsPanel();" class="mt-6 bg-gradient-to-r from-violet-600 to-brand-500 hover:opacity-90 text-white px-8 py-3 rounded-xl font-bold shadow-lg transition">เย่! รับคู่หูเลย 🎉</button>
+            </div>`;
+    }, 2500);
+}
+
 function buildQuickWin(uid) {
     const el = document.getElementById('quick-win');
     if (!el) return;

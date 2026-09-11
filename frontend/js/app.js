@@ -117,9 +117,45 @@ async function loadCourses() {
             o.textContent = c.name + (c.section ? ` (${c.section})` : '');
             sel.appendChild(o);
         });
+        // background stats across ALL courses (students / assignments / pending)
+        loadGlobalStats();
     } catch (e) {
         console.error(e);
         toast('❌ โหลดรายวิชาไม่สำเร็จ');
+    }
+}
+
+/* Global stats: unique students, total assignments, total pending across all my courses */
+async function loadGlobalStats() {
+    const studentIds = new Set();
+    let totalAssignments = 0, totalPending = 0;
+
+    for (const c of courses) {
+        try {
+            // students (unique by userId)
+            const sData = await gapi(`courses/${c.id}/students?pageSize=100&fields=students(userId),nextPageToken`);
+            (sData.students || []).forEach(s => studentIds.add(s.userId));
+
+            // assignments + pending submissions
+            const wData = await gapi(`courses/${c.id}/courseWork?pageSize=100&fields=courseWork(id,maxPoints),nextPageToken`);
+            const works = wData.courseWork || [];
+            totalAssignments += works.length;
+
+            for (const w of works) {
+                const subData = await gapi(`courses/${c.id}/courseWork/${w.id}/studentSubmissions?pageSize=100&fields=studentSubmissions(state),nextPageToken`);
+                (subData.studentSubmissions || []).forEach(s => {
+                    if (s.state === 'CREATED' || s.state === 'NEW') totalPending++;
+                });
+            }
+        } catch (e) { console.warn('stats skip course', c.id, e); }
+    }
+
+    document.getElementById('stat-students').textContent = studentIds.size;
+    document.getElementById('stat-assignments').textContent = totalAssignments;
+    document.getElementById('stat-pending').textContent = totalPending;
+    if (totalPending > 0) {
+        const card = document.getElementById('stat-pending').closest('.card');
+        if (card) card.classList.add('ring-2', 'ring-rose-300');
     }
 }
 
@@ -152,7 +188,7 @@ async function loadStudents(courseId) {
     try {
         const data = await gapi(`courses/${courseId}/students?pageSize=100`);
         students = data.students || [];
-        document.getElementById('stat-students').textContent = students.length;
+        // note: stat-students is global (loadGlobalStats) — no overwrite here
         const sel = document.getElementById('student-select');
         sel.innerHTML = '<option value="">-- เลือกนักเรียน --</option>';
         students.forEach(s => {

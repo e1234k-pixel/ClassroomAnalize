@@ -161,8 +161,15 @@ async function onCourseChange() {
 
     loadStudents(currentCourseId);
     try {
-        const data = await gapi(`courses/${currentCourseId}/courseWork?pageSize=100`);
-        assignments = data.courseWork || [];
+        // Classroom API caps courseWork.list at 30 per page — follow nextPageToken
+        let works = [], pageToken = null;
+        do {
+            const url = `courses/${currentCourseId}/courseWork?pageSize=30${pageToken ? `&pageToken=${pageToken}` : ''}`;
+            const data = await gapi(url);
+            works = works.concat(data.courseWork || []);
+            pageToken = data.nextPageToken || null;
+        } while (pageToken);
+        assignments = works;
         const sel = document.getElementById('assignment-select');
         sel.innerHTML = '<option value="">-- เลือกงาน --</option>';
         assignments.forEach(w => {
@@ -180,8 +187,15 @@ async function onCourseChange() {
 
 async function loadStudents(courseId) {
     try {
-        const data = await gapi(`courses/${courseId}/students?pageSize=100`);
-        students = data.students || [];
+        // Classroom API caps students.list at 30 per page — follow nextPageToken
+        let all = [], pageToken = null;
+        do {
+            const url = `courses/${courseId}/students?pageSize=30${pageToken ? `&pageToken=${pageToken}` : ''}`;
+            const data = await gapi(url);
+            all = all.concat(data.students || []);
+            pageToken = data.nextPageToken || null;
+        } while (pageToken);
+        students = all;
         document.getElementById('stat-students').textContent = students.length;
         const sel = document.getElementById('student-select');
         sel.innerHTML = '<option value="">-- เลือกนักเรียน --</option>';

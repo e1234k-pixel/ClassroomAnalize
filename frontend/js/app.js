@@ -13,6 +13,7 @@ const SCOPES = [
 let accessToken = null;
 let courses = [], students = [], assignments = [], submissions = [];
 let currentCourseId = null, currentAssignmentId = null;
+let userRole = null; // 'teacher' | 'student'
 
 /* ─── Auth ─── */
 function handleGoogleLogin() {
@@ -61,7 +62,65 @@ async function afterLogin() {
             setUserProfile('', 'ครูผู้สอน');
         }
     }
-    loadCourses();
+    loadCourses().then(async () => {
+        userRole = await detectRole();
+        applyRoleUI();
+        if (userRole === 'student') {
+            buildStudentView();
+        } else {
+            loadGlobalStats();
+        }
+    });
+}
+
+/* Hide teacher-only UI for students */
+function applyRoleUI() {
+    const isStudent = userRole === 'student';
+    document.getElementById('user-role-badge').textContent = isStudent ? '🎓 นักเรียน' : '🧑‍🏫 ครูผู้สอน';
+    ['tab-grading', 'tab-gradebook', 'tab-export'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.toggle('hidden', isStudent);
+    });
+    // debt tracker: keep for teacher only (student gets own view in quests tab)
+    const tracker = document.getElementById('tab-tracker');
+    if (tracker) tracker.classList.toggle('hidden', isStudent);
+    if (isStudent) {
+        switchTab('quests');
+        const statAssignments = document.getElementById('stat-assignments')?.closest('.card');
+        const statPending = document.getElementById('stat-pending')?.closest('.card');
+        [statAssignments, statPending].forEach(c => c && c.classList.add('hidden'));
+    }
+}
+
+/* ═══ Student View — own data only ═══ */
+async function buildStudentView() {
+    try {
+        // student's own ACTIVE courses
+        const data = await gapi('courses?pageSize=30&courseStates=ACTIVE&studentId=me');
+        const myCourses = data.courses || [];
+        const sel = document.getElementById('course-select');
+        sel.innerHTML = '<option value="">-- เลือกวิชาของฉัน --</option>';
+        myCourses.forEach(c => {
+            const o = document.createElement('option');
+            o.value = c.id;
+            o.textContent = c.name + (c.section ? ` (${c.section})` : '');
+            sel.appendChild(o);
+        });
+        document.getElementById('stat-courses').textContent = myCourses.length;
+
+        // own XP from central API
+        const me = userProfile?.id || 'me';
+        try {
+            const s = await apiGet(`/api/state/${encodeURIComponent(me)}`);
+            if (s.ok) {
+                document.getElementById('student-total-score').textContent = s.spendable;
+                document.getElementById('student-pending-count').textContent = s.pets.length;
+            }
+        } catch (e) { console.warn('central state unavailable for student', e); }
+    } catch (e) {
+        console.error(e);
+        toast('❌ โหลดวิชาของนักเรียนไม่สำเร็จ');
+    }
 }
 
 function setUserProfile(photo, name) {
@@ -101,6 +160,29 @@ async function gapi(path) {
     });
     if (!r.ok) throw new Error(`${r.status} ${path}`);
     return r.json();
+}
+
+/* Role detection: teacher if teacherId=me returns courses; else student if studentId=me returns courses */
+async function detectRole() {
+    try {
+        const t = await gapi('courses?pageSize=1&courseStates=ACTIVE&teacherId=me');
+        if ((t.courses || []).length >= 0 && !t.error && !(t.courses === undefined && t.error)) {
+            // teacherId=me succeeds (200) → teacher-ish; but empty teachers list can 200 too.
+            // Confirm by checking studentId=me as well; teacher wins if both.
+            try {
+                await gapi('courses?pageSize=1&courseStates=ACTIVE&studentId=me');
+                // both succeed → pick teacher (matches teacher-first policy)
+                return 'teacher';
+            } catch (e2) {
+                return 'teacher';
+            }
+        }
+    } catch (e) { /* not teacher or no courses */ }
+    try {
+        await gapi('courses?pageSize=1&courseStates=ACTIVE&studentId=me');
+        return 'student';
+    } catch (e) { /* not student either */ }
+    return 'student'; // default: student view (safe)
 }
 
 /* ─── Courses (owned by me + ACTIVE only) ─── */

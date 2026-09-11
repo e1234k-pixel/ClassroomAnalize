@@ -215,6 +215,7 @@ classroom-hub/
 - คำนวณจากข้อมูลที่มีอยู่แล้ว: submissions (state, late, grades) — ไม่ต้องขอสิทธิ์ API เพิ่ม
 - หน้าใหม่: แท็บที่ 5 "🏆 Quests & Badges" + เพิ่ม XP/Streak ใน Student Slip
 - เก็บ XP ใน localStorage ตอนนี้ → ย้ายไป backend SQLite เมื่อเปิดใช้ backend
+- **สถานะ: ทำ Phase 1 เสร็จแล้ว (deploy แล้ว)** — แท็บ 🏆 Quests & Badges: Leaderboard Top 10, XP/Level/Streak ต่อคน, Badge auto-award (เพอร์เฟกต์/พัฒนาตัวเอง/เจ้าตาราง/นักส่งมืออาชีพ), Weekly Quest (อัตราส่งงานทั้งห้อง ≥90% = XP x2), การ์ดนักเรียนแบบ XP bar
 
 ---
 

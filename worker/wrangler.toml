@@ -1,0 +1,14 @@
+name = "classroom-hub-api"
+main = "worker.js"
+compatibility_date = "2024-09-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "classroom-hub-db"
+database_id = "CREATE_VIA_DASHBOARD_THEN_PASTE_HERE"
+
+[triggers]
+crons = ["*/30 * * * *"]
+
+[vars]
+# HUB_KEY และ secrets อื่นๆ ตั้งผ่าน Dashboard → Workers → Settings → Variables

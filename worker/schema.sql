@@ -1,0 +1,43 @@
+-- Classroom Hub D1 schema
+CREATE TABLE IF NOT EXISTS users (
+  uid TEXT PRIMARY KEY,
+  total_xp INTEGER NOT NULL DEFAULT 0,
+  spent INTEGER NOT NULL DEFAULT 0,
+  created INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS pets (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  uid TEXT NOT NULL,
+  petId TEXT NOT NULL,
+  name TEXT NOT NULL,
+  img TEXT DEFAULT '',
+  stars INTEGER NOT NULL DEFAULT 1,
+  acquired INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_pets_uid ON pets(uid);
+
+CREATE TABLE IF NOT EXISTS inventory (
+  uid TEXT NOT NULL,
+  itemId TEXT NOT NULL,
+  qty INTEGER NOT NULL DEFAULT 1,
+  PRIMARY KEY (uid, itemId)
+);
+
+CREATE TABLE IF NOT EXISTS xp_events (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  uid TEXT NOT NULL,
+  event TEXT NOT NULL,
+  amount INTEGER NOT NULL,
+  workId TEXT,
+  fingerprint TEXT,
+  created INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_xp_uid ON xp_events(uid);
+
+CREATE TABLE IF NOT EXISTS sync_fp (
+  uid TEXT NOT NULL,
+  fingerprint TEXT NOT NULL,
+  created INTEGER NOT NULL,
+  PRIMARY KEY (uid, fingerprint)
+);

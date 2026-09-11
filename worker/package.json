@@ -1,0 +1,14 @@
+{
+  "name": "classroom-hub-api",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "db-create": "wrangler d1 create classroom-hub-db",
+    "db-init": "wrangler d1 execute classroom-hub-db --remote --file=schema.sql",
+    "secret": "wrangler secret put HUB_KEY"
+  },
+  "devDependencies": {
+    "wrangler": "^3.0.0"
+  }
+}

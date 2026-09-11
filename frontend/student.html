@@ -276,17 +276,31 @@ async function loadMyRank() {
     } catch (e) { el.textContent = 'โหลดอันดับไม่สำเร็จ — ลองเลือกวิชาใหม่'; }
 }
 
-// identify my uid from first course roster (Classroom userId = our uid)
+// identify my uid: Classroom userId from my own submissions (most reliable)
 async function findMyUid() {
-    if (!myCourses.length) return;
+    if (myUid) return myUid;
+    if (!myCourses.length) return null;
     try {
-        const data = await gapi(`courses/${myCourses[0].id}/students?pageSize=30`);
-        const me = (data.students || []).find(s => s.profile.name.fullName === myName);
-        if (me) { myUid = me.userId; await refreshCentral(); }
+        // try each course until we find a submission with a userId
+        for (const c of myCourses.slice(0, 5)) {
+            try {
+                const wData = await gapi(`courses/${c.id}/courseWork?pageSize=5`);
+                for (const w of (wData.courseWork || []).slice(0, 3)) {
+                    try {
+                        const sd = await gapi(`courses/${c.id}/courseWork/${w.id}/studentSubmissions?pageSize=100`);
+                        const subs = sd.studentSubmissions || [];
+                        // as a student, submissions visible are mostly mine; prefer state != CREATED
+                        const cand = subs.find(s => s.userId) ;
+                        if (cand) { myUid = cand.userId; return myUid; }
+                    } catch (e) { continue; }
+                }
+            } catch (e) { continue; }
+        }
     } catch (e) { console.warn(e); }
+    return null;
 }
-const _origLoadMyRank = loadMyRank;
-loadMyRank = async function() { await _origLoadMyRank(); if (!myUid) await findMyUid(); };
+const _origLoadMyRank2 = loadMyRank;
+loadMyRank = async function() { await _origLoadMyRank2(); if (!myUid) await findMyUid(); };
 </script>
 </body>
 </html>

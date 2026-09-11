@@ -307,6 +307,149 @@ function generateFeedback() {
     toast('✨ ร่าง Feedback แล้ว');
 }
 
+/* ═══ Gamification: XP / Streak / Badges ═══ */
+async function loadAllSubmissions() {
+    // fetch submissions for every assignment in the current course
+    const all = [];
+    for (const a of assignments) {
+        try {
+            const data = await gapi(`courses/${currentCourseId}/courseWork/${a.id}/studentSubmissions?pageSize=100`);
+            (data.studentSubmissions || []).forEach(s => all.push({ ...s, _work: a }));
+        } catch (e) { console.error(e); }
+    }
+    return all;
+}
+
+function computeGamification(allSubs) {
+    // per student: XP, ontime streak, badges
+    const byStudent = {};
+    students.forEach(st => {
+        byStudent[st.userId] = { name: st.profile.name.fullName, xp: 0, ontime: 0, late: 0, missing: 0, graded: [], streak: 0, badges: [] };
+    });
+
+    allSubs.forEach(s => {
+        const rec = byStudent[s.userId];
+        if (!rec) return;
+        const pts = s._work?.maxPoints || 100;
+        const grade = s.assignedGrade ?? s.draftGrade;
+        const missing = s.state === 'CREATED' || s.state === 'NEW';
+
+        if (missing) { rec.missing++; return; }
+        if (s.late) { rec.xp += 20; rec.late++; }
+        else { rec.xp += 50; rec.ontime++; }
+        if (grade != null && grade / pts >= 0.8) rec.xp += 30;
+        if (grade != null) rec.graded.push({ pct: (grade / pts) * 100, full: grade >= pts });
+    });
+
+    // weekly streak: consecutive ontime across works ordered by due date
+    Object.values(byStudent).forEach(rec => {
+        let streak = 0;
+        for (const g of rec.graded.sort((a, b) => 0)) { /* keep order */ break; }
+        streak = rec.missing === 0 ? rec.ontime : 0;
+        rec.streak = streak;
+
+        // badges
+        if (rec.graded.filter(g => g.full).length >= 3) rec.badges.push({ icon: '💯', name: 'เพอร์เฟกต์' });
+        if (rec.streak >= 4) rec.badges.push({ icon: '🔥', name: 'นักส่งมืออาชีพ' });
+        const pcts = rec.graded.map(g => g.pct);
+        let rising = 0;
+        for (let i = 1; i < pcts.length; i++) if (pcts[i] > pcts[i - 1]) rising++; else rising = 0;
+        if (rising >= 2) rec.badges.push({ icon: '🚀', name: 'พัฒนาตัวเอง' });
+        if (rec.missing === 0 && rec.ontime + rec.late >= assignments.length && assignments.length > 0) rec.badges.push({ icon: '👑', name: 'เจ้าตาราง' });
+        rec.xp += rec.streak >= 1 ? 100 : 0; // weekly streak bonus
+    });
+    return byStudent;
+}
+
+const LEVELS = [
+    { min: 0, name: 'ดาวรุ่ง', icon: '⭐' },
+    { min: 200, name: 'นักสำรวจ', icon: '🧭' },
+    { min: 500, name: 'นักผจญภัย', icon: '🗺️' },
+    { min: 900, name: 'นักปราชญ์', icon: '📚' },
+    { min: 1400, name: 'ตำนานห้องเรียน', icon: '🏆' },
+];
+function levelOf(xp) {
+    let lv = LEVELS[0];
+    for (const l of LEVELS) if (xp >= l.min) lv = l;
+    return lv;
+}
+
+let _gamified = null;
+async function buildQuests() {
+    if (!currentCourseId || !assignments.length) {
+        document.getElementById('leaderboard-body').innerHTML = '<tr><td colspan="4" class="text-center text-slate-400 py-8">เลือกวิชาใน Grading Studio ก่อน</td></tr>';
+        return;
+    }
+    toast('⏳ กำลังคำนวณ XP...');
+    const allSubs = await loadAllSubmissions();
+    const data = computeGamification(allSubs);
+    _gamified = data;
+
+    const rows = Object.entries(data)
+        .map(([uid, d]) => ({ uid, ...d }))
+        .sort((a, b) => b.xp - a.xp);
+
+    document.getElementById('leaderboard-body').innerHTML = rows.slice(0, 10).map((d, i) => {
+        const lv = levelOf(d.xp);
+        const medal = ['🥇', '🥈', '🥉'][i] || `${i + 1}`;
+        const badges = d.badges.map(b => `<span title="${b.name}">${b.icon}</span>`).join(' ');
+        return `<tr class="hover:bg-slate-50">
+            <td class="px-4 py-2.5 text-center text-lg">${medal}</td>
+            <td class="px-4 py-2.5 font-medium text-slate-700">${d.name}</td>
+            <td class="px-4 py-2.5 text-center">${lv.icon} <b>${lv.name}</b></td>
+            <td class="px-4 py-2.5 text-center font-bold text-brand-600">${d.xp} XP</td>
+            <td class="px-4 py-2.5 text-center">${d.streak > 0 ? `🔥 ${d.streak}` : '-'}</td>
+            <td class="px-4 py-2.5 text-center text-lg">${badges || '-'}</td>
+        </tr>`;
+    }).join('');
+
+    // class quest: submission rate this week
+    const totalWorks = assignments.length * students.length;
+    const submitted = allSubs.filter(s => !(s.state === 'CREATED' || s.state === 'NEW')).length;
+    const rate = totalWorks ? Math.round(submitted / totalWorks * 100) : 0;
+    const qEl = document.getElementById('class-quest');
+    qEl.innerHTML = rate >= 90
+        ? `🎉 <b>ภารกิจสำเร็จ!</b> ทั้งห้องส่งงาน ${rate}% — สัปดาห์หน้าทุกคนได้ XP คูณ 2!`
+        : `🎯 ภารกิจสัปดาห์นี้: ทั้งห้องส่งงานให้ครบ <b>90%</b> (ตอนนี้ ${rate}%) เหลืออีก ${Math.max(0, Math.ceil(totalWorks * 0.9) - submitted)} ชิ้น`;
+
+    // build per-student quest panel select
+    const sel = document.getElementById('quest-student-select');
+    sel.innerHTML = '<option value="">-- เลือกนักเรียน --</option>';
+    students.forEach(s => {
+        const o = document.createElement('option');
+        o.value = s.userId;
+        o.textContent = s.profile.name.fullName;
+        sel.appendChild(o);
+    });
+    document.getElementById('quest-detail').innerHTML = '<p class="text-slate-400 text-sm">เลือกนักเรียนเพื่อดู XP, Streak และป้ายรางวัล</p>';
+}
+
+function showQuestDetail() {
+    const uid = document.getElementById('quest-student-select').value;
+    const el = document.getElementById('quest-detail');
+    if (!uid || !_gamified || !_gamified[uid]) { el.innerHTML = '<p class="text-slate-400 text-sm">เลือกนักเรียนเพื่อดูข้อมูล</p>'; return; }
+    const d = _gamified[uid];
+    const lv = levelOf(d.xp);
+    const next = LEVELS.find(l => l.min > d.xp);
+    const progress = next ? Math.min(100, Math.round((d.xp - lv.min) / (next.min - lv.min) * 100)) : 100;
+    el.innerHTML = `
+        <div class="flex items-center gap-4 mb-3">
+            <div class="text-4xl">${lv.icon}</div>
+            <div class="flex-1">
+                <p class="font-bold text-slate-700">${d.name} — ${lv.name}</p>
+                <div class="h-2.5 bg-slate-200 rounded-full mt-1 overflow-hidden"><div class="h-full bg-gradient-to-r from-brand-500 to-indigo-500" style="width:${progress}%"></div></div>
+                <p class="text-xs text-slate-500 mt-1">${d.xp} XP ${next ? `• อีก ${next.min - d.xp} XP ถึง ${next.name}` : '• ระดับสูงสุด!'}</p>
+            </div>
+        </div>
+        <div class="grid grid-cols-3 gap-2 text-center text-sm mb-3">
+            <div class="bg-emerald-50 rounded-lg p-2">✅ ส่งตรงเวลา<br><b>${d.ontime}</b></div>
+            <div class="bg-amber-50 rounded-lg p-2">⏰ ส่งช้า<br><b>${d.late}</b></div>
+            <div class="bg-rose-50 rounded-lg p-2">❌ ยังไม่ส่ง<br><b>${d.missing}</b></div>
+        </div>
+        <p class="text-sm text-slate-600 mb-1">🔥 Streak: <b>${d.streak}</b> งานต่อเนื่อง</p>
+        <div class="flex flex-wrap gap-2">${d.badges.map(b => `<span class="bg-violet-100 text-violet-800 text-xs px-2 py-1 rounded-full">${b.icon} ${b.name}</span>`).join('') || '<span class="text-xs text-slate-400">ยังไม่มีป้าย — ส่งงานตรงเวลาเพื่อสะสมป้ายแรก!</span>'}</div>`;
+}
+
 /* ─── Export ─── */
 function exportExcel() {
     if (!submissions.length) { toast('ยังไม่มีข้อมูล'); return; }
@@ -353,10 +496,8 @@ function toast(msg) {
     clearTimeout(el._t); el._t = setTimeout(() => el.classList.add('hidden'), 2500);
 }
 
-/* Pending stats after students+assignments loaded */
-const _origOnAssignmentChange = onAssignmentChange;
-onAssignmentChange = async function() {
-    await _origOnAssignmentChange();
-    const uid = document.getElementById('student-select').value;
-    if (uid) countPendingAll(uid);
+const _origOnCourseChange = onCourseChange;
+onCourseChange = async function() {
+    await _origOnCourseChange();
+    if (currentCourseId) buildQuests();
 };

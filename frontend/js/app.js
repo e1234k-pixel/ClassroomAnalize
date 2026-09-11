@@ -359,6 +359,41 @@ function saveAIConfig() {
         }
     }
 
+/* ═══ Central API (Worker) — with localStorage fallback ═══ */
+const API_BASE = 'https://classroom-hub-api.ekai.workers.dev';
+const HUB_KEY = localStorage.getItem('hubKey') || ''; // teacher sets once via ⚙️
+
+async function apiGet(path) {
+    const r = await fetch(`${API_BASE}${path}`);
+    if (!r.ok) throw new Error(`API ${r.status}`);
+    return r.json();
+}
+async function apiPost(path, body) {
+    const r = await fetch(`${API_BASE}${path}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(HUB_KEY ? { 'X-Hub-Key': HUB_KEY } : {}) },
+        body: JSON.stringify(body)
+    });
+    if (!r.ok) throw new Error(`API ${r.status}`);
+    return r.json();
+}
+/* read state: try API first, fall back to localStorage */
+async function loadState(uid) {
+    try {
+        const s = await apiGet(`/api/state/${encodeURIComponent(uid)}`);
+        if (s.ok) return { mode: 'api', ...s };
+    } catch (e) { console.warn('API unavailable, using localStorage fallback'); }
+    return {
+        mode: 'local',
+        uid,
+        totalXp: (_gamified?.[uid]?.xp) || 0,
+        spent: getSpent(uid),
+        pets: getPets(uid),
+        inventory: getInventory(uid),
+        recentEvents: [],
+    };
+}
+
 /* ═══ Pet Shop & Quick Win Quests ═══ */
 const SHOP_ITEMS = [
     { id: 'egg_common', name: 'ไข่ธรรมดา', icon: '🥚', cost: 150, desc: 'สุ่มคู่หูทั่วไป (6 แบบ)' },
@@ -458,12 +493,16 @@ function buyItem(id) {
     if (spendable < item.cost) { toast(`❌ XP ไม่พอ (มี ${spendable}, ต้องการ ${item.cost})`); return; }
     addSpent(uid, item.cost);
 
+    // record spend centrally (fire-and-forget; localStorage is the offline fallback)
+    apiPost('/api/spend', { uid, cost: item.cost }).catch(e => console.warn('central spend failed', e));
+
     if (id === 'egg_common' || id === 'egg_rare') {
         const { rolled, pityWas, guaranteed } = rollPet(uid, id);
         const pets = getPets(uid);
         const dupe = pets.filter(p => p.petId === rolled.id).length;
         pets.push({ petId: rolled.id, name: rolled.name, icon: rolled.icon, img: rolled.img, stars: dupe + 1, acquired: Date.now() });
         savePets(uid, pets);
+        apiPost('/api/pet', { uid, petId: rolled.id, name: rolled.name, img: rolled.img, stars: dupe + 1 }).catch(e => console.warn('central pet save failed', e));
         showEggReveal(rolled, dupe > 0 ? dupe + 1 : 0, id === 'egg_rare', guaranteed, pityWas);
     } else {
         const inv = getInventory(uid);

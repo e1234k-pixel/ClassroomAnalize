@@ -410,6 +410,44 @@ function buildShop() {
         </div>`).join('');
 }
 
+/* Pity System: guarantees new pet after N opens without one */
+function getPity(uid, eggType) {
+    const key = `pity_${uid}_${eggType}`;
+    return parseInt(localStorage.getItem(key) || '0');
+}
+function setPity(uid, eggType, val) {
+    localStorage.setItem(`pity_${uid}_${eggType}`, String(val));
+}
+
+function rollPet(uid, eggType) {
+    const pool = eggType === 'egg_common' ? PET_CATALOG.common : PET_CATALOG.rare;
+    const owned = new Set(getPets(uid).filter(p => pool.some(c => c.id === p.petId)).map(p => p.petId));
+    const newOnes = pool.filter(p => !owned.has(p.id));
+    let pity = getPity(uid, eggType);
+
+    // Guarantee ladder: 4+ opens → only new ones; 5 opens → guaranteed pick
+    let rolled;
+    if (newOnes.length === 0) {
+        // all owned → dupe becomes star-up (still counts as reward, reset pity)
+        rolled = pool[Math.floor(Math.random() * pool.length)];
+        setPity(uid, eggType, 0);
+    } else if (pity >= 4) {
+        // guaranteed new pet
+        rolled = newOnes[Math.floor(Math.random() * newOnes.length)];
+        setPity(uid, eggType, 0);
+    } else {
+        const chanceNew = pity >= 3 ? 0.6 : pity >= 2 ? 0.4 : 0.2; // soft pity ramps up
+        if (Math.random() < chanceNew * (newOnes.length / pool.length) + 0.15) {
+            rolled = newOnes[Math.floor(Math.random() * newOnes.length)];
+            setPity(uid, eggType, 0);
+        } else {
+            rolled = pool[Math.floor(Math.random() * pool.length)];
+            setPity(uid, eggType, pity + 1);
+        }
+    }
+    return { rolled, pityWas: pity, guaranteed: newOnes.length === 0 ? false : pity >= 4 };
+}
+
 function buyItem(id) {
     const item = SHOP_ITEMS.find(i => i.id === id);
     const uid = document.getElementById('quest-student-select').value;
@@ -421,13 +459,12 @@ function buyItem(id) {
     addSpent(uid, item.cost);
 
     if (id === 'egg_common' || id === 'egg_rare') {
-        const pool = id === 'egg_common' ? PET_CATALOG.common : PET_CATALOG.rare;
-        const rolled = pool[Math.floor(Math.random() * pool.length)];
+        const { rolled, pityWas, guaranteed } = rollPet(uid, id);
         const pets = getPets(uid);
         const dupe = pets.filter(p => p.petId === rolled.id).length;
         pets.push({ petId: rolled.id, name: rolled.name, icon: rolled.icon, img: rolled.img, stars: dupe + 1, acquired: Date.now() });
         savePets(uid, pets);
-        showEggReveal(rolled, dupe > 0 ? dupe + 1 : 0, id === 'egg_rare');
+        showEggReveal(rolled, dupe > 0 ? dupe + 1 : 0, id === 'egg_rare', guaranteed, pityWas);
     } else {
         const inv = getInventory(uid);
         inv[id] = (inv[id] || 0) + 1;
@@ -480,7 +517,7 @@ function petSay(name, icon) {
 }
 
 /* ═══ Egg reveal animation (gacha-style) ═══ */
-function showEggReveal(pet, stars, isRare) {
+function showEggReveal(pet, stars, isRare, guaranteed = false, pityWas = 0) {
     const existing = document.getElementById('egg-reveal-overlay');
     if (existing) existing.remove();
 
@@ -488,6 +525,9 @@ function showEggReveal(pet, stars, isRare) {
     overlay.id = 'egg-reveal-overlay';
     overlay.className = 'fixed inset-0 z-[60] flex items-center justify-center';
     overlay.style.cssText = 'background:rgba(15,23,42,0.85);backdrop-filter:blur(6px)';
+    const pityNote = guaranteed && pityWas > 0
+        ? `<p class="text-xs text-emerald-300 mt-1">🍀 การันตีคู่หูใหม่ (เปิดมาแล้ว ${pityWas + 1} ครั้ง)</p>`
+        : pityWas > 0 ? `<p class="text-xs text-slate-400 mt-1">การันตีคู่หูใหม่อีก ${Math.max(0, 5 - pityWas - 1)} ครั้ง</p>` : '';
     overlay.innerHTML = `
         <div class="text-center px-4">
             <div id="egg-anim" class="text-8xl md:text-9xl mx-auto" style="animation: eggShake .4s infinite">🥚</div>
@@ -510,6 +550,7 @@ function showEggReveal(pet, stars, isRare) {
                 </div>
                 <p class="text-3xl font-bold text-white">${pet.name}${stars > 1 ? ` <span class="text-yellow-300">⭐×${stars}</span>` : ''}</p>
                 <p class="text-sm mt-2 ${isRare ? 'text-yellow-300' : 'text-violet-200'}">${isRare ? '✨ คู่หูหายาก! คุณโชคดีมาก!' : '🎉 ได้คู่หูใหม่แล้ว!'}</p>
+                ${pityNote}
                 <p class="text-xs text-slate-300 mt-1">เพื่อนคู่หูนี้จะอยู่กับคุณตลอดการเรียน</p>
                 <button onclick="this.closest('#egg-reveal-overlay').remove();buildQuestsPanel();" class="mt-6 bg-gradient-to-r from-violet-600 to-brand-500 hover:opacity-90 text-white px-8 py-3 rounded-xl font-bold shadow-lg transition">เย่! รับคู่หูเลย 🎉</button>
             </div>`;

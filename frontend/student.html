@@ -186,6 +186,11 @@ function login() {
                     myEmail = ti.email || myEmail;
                 } catch (_) {}
             }
+            // Classroom userProfiles/me is the authoritative ID used by teacher sync/D1.
+            try {
+                const me = await gapi('userProfiles/me');
+                if (me?.id) myUid = me.id;
+            } catch (e) { console.warn('Classroom profile lookup failed', e); }
             if (myUid) await refreshCentral();
 
             try {

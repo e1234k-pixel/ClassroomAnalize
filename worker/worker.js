@@ -37,7 +37,8 @@ export default {
 
       // auth check for writes
       const isWrite = request.method === 'POST';
-      if (isWrite && request.headers.get('X-Hub-Key') !== env.HUB_KEY) {
+      // Auth: only enforce if HUB_KEY secret is configured; when unset, allow writes (single-teacher mode)
+      if (isWrite && env.HUB_KEY && request.headers.get('X-Hub-Key') !== env.HUB_KEY) {
         return json({ ok: false, error: 'unauthorized' }, 401);
       }
 

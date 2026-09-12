@@ -220,10 +220,18 @@ function login() {
                 document.getElementById('course-select').innerHTML = '<option value="">-- เลือกวิชา --</option>' +
                     myCourses.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
                 if (myCourses.length) {
-                    document.getElementById('course-select').value = myCourses[0].id;
+                    const select = document.getElementById('course-select');
+                    select.value = String(myCourses[0].id);
+                    // Render immediately; do not require a second manual selection.
                     await loadMyRank();
+                } else {
+                    document.getElementById('work-list').innerHTML = '<p class="text-sm text-amber-600">ไม่พบวิชาที่กำลังเปิดสอนในบัญชีนี้</p>';
                 }
-            } catch (e) { toast('❌ โหลดวิชาไม่สำเร็จ'); }
+            } catch (e) {
+                console.error('student courses/workload failed', e);
+                document.getElementById('work-list').innerHTML = `<p class="text-sm text-rose-600">โหลดข้อมูลวิชาไม่สำเร็จ (${e.message || 'Google API error'})</p>`;
+                toast('❌ โหลดวิชาไม่สำเร็จ');
+            }
         }
     }).requestAccessToken();
 }
@@ -294,13 +302,20 @@ async function loadMyRank() {
     try {
         const course = myCourses.find(c => c.id === cid);
         document.getElementById('workload-course').textContent = course?.name || '';
-        const wData = await gapi(`courses/${cid}/courseWork?pageSize=100`);
+        const wData = await gapi(`courses/${cid}/courseWork?pageSize=100&courseWorkStates=PUBLISHED`);
         const works = wData.courseWork || [];
+        if (!works.length) {
+            ['total','pending','submitted','graded','late'].forEach(k => { const el2=document.getElementById('work-'+k); if(el2) el2.textContent='0'; });
+            document.getElementById('work-list').innerHTML = '<p class="text-sm text-slate-400">วิชานี้ยังไม่มีงานที่ประกาศ</p>';
+            el.textContent = 'วิชานี้ยังไม่มีงานที่ประกาศ';
+            await refreshCentral();
+            return;
+        }
         const stats = { total: works.length, pending: 0, submitted: 0, graded: 0, late: 0 };
         let xp = 0, rows = [];
         for (const w of works) {
             try {
-                const sd = await gapi(`courses/${cid}/courseWork/${w.id}/studentSubmissions?userId=me&pageSize=10`);
+                const sd = await gapi(`courses/${cid}/courseWork/${w.id}/studentSubmissions?userId=me&pageSize=10&states=NEW%2CTURNED_IN%2CRETURNED%2CRECLAIMED`);
                 const mine = (sd.studentSubmissions || []).find(s => s.userId === myUid) || (sd.studentSubmissions || [])[0];
                 const state = mine?.state || 'NEW';
                 const submitted = !!mine && !['NEW','CREATED'].includes(state);

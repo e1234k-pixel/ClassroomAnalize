@@ -74,6 +74,22 @@
         <div class="card p-4"><p class="text-xs text-slate-500">🐾 คู่หูของฉัน</p><p id="pet-count" class="text-2xl font-bold text-violet-600">0</p></div>
     </div>
 
+    <!-- Workload & grades -->
+    <div class="card p-6 mb-4">
+        <div class="flex items-center justify-between mb-3">
+            <h2 class="font-bold text-slate-700">📋 ภาระงานและคะแนน</h2>
+            <span id="workload-course" class="text-xs text-slate-400"></span>
+        </div>
+        <div id="workload-stats" class="grid grid-cols-2 sm:grid-cols-5 gap-2 mb-4">
+            <div class="rounded-lg bg-slate-50 p-3"><p class="text-xs text-slate-500">งานทั้งหมด</p><b id="work-total">-</b></div>
+            <div class="rounded-lg bg-amber-50 p-3"><p class="text-xs text-amber-700">รอส่ง</p><b id="work-pending" class="text-amber-700">-</b></div>
+            <div class="rounded-lg bg-blue-50 p-3"><p class="text-xs text-blue-700">ส่งแล้ว</p><b id="work-submitted" class="text-blue-700">-</b></div>
+            <div class="rounded-lg bg-emerald-50 p-3"><p class="text-xs text-emerald-700">ตรวจแล้ว</p><b id="work-graded" class="text-emerald-700">-</b></div>
+            <div class="rounded-lg bg-rose-50 p-3"><p class="text-xs text-rose-700">ส่งช้า</p><b id="work-late" class="text-rose-700">-</b></div>
+        </div>
+        <div id="work-list" class="space-y-2"><p class="text-sm text-slate-400">เลือกวิชาเพื่อดูงาน</p></div>
+    </div>
+
     <!-- Pets -->
     <div class="card p-6 mb-4">
         <h2 class="font-bold text-slate-700 mb-3">🐾 คู่หูของฉัน</h2>
@@ -276,24 +292,31 @@ async function loadMyRank() {
     const el = document.getElementById('my-rank');
     if (!cid) { el.textContent = 'เลือกวิชาเพื่อดูอันดับ'; return; }
     try {
-        // gather own submissions across all works to compute my XP in this course
-        const wData = await gapi(`courses/${cid}/courseWork?pageSize=30`);
-        let xp = 0, works = 0;
-        for (const w of (wData.courseWork || [])) {
-            works++;
+        const course = myCourses.find(c => c.id === cid);
+        document.getElementById('workload-course').textContent = course?.name || '';
+        const wData = await gapi(`courses/${cid}/courseWork?pageSize=100`);
+        const works = wData.courseWork || [];
+        const stats = { total: works.length, pending: 0, submitted: 0, graded: 0, late: 0 };
+        let xp = 0, rows = [];
+        for (const w of works) {
             try {
-                const sd = await gapi(`courses/${cid}/courseWork/${w.id}/studentSubmissions?pageSize=100`);
-                // find my own submission (API may ignore userId param for students)
+                const sd = await gapi(`courses/${cid}/courseWork/${w.id}/studentSubmissions?userId=me&pageSize=10`);
                 const mine = (sd.studentSubmissions || []).find(s => s.userId === myUid) || (sd.studentSubmissions || [])[0];
-                if (!mine) continue;
-                if (mine.state === 'CREATED' || mine.state === 'NEW') continue;
-                xp += mine.late ? 20 : 50;
-                const g = mine.assignedGrade ?? mine.draftGrade;
-                if (g != null && g / (w.maxPoints || 100) >= 0.8) xp += 30;
-            } catch (e) { console.warn('skip work', w.id, e); continue; }
+                const state = mine?.state || 'NEW';
+                const submitted = !!mine && !['NEW','CREATED'].includes(state);
+                const grade = mine?.assignedGrade ?? mine?.draftGrade;
+                if (!submitted) stats.pending++;
+                else { stats.submitted++; if (grade != null) stats.graded++; if (mine.late) stats.late++; }
+                if (submitted) { xp += mine.late ? 20 : 50; if (grade != null && grade / (w.maxPoints || 100) >= .8) xp += 30; }
+                rows.push({ w, mine, submitted, grade });
+            } catch (e) { console.warn('skip work', w.id, e); }
         }
-        if (!works) { el.textContent = 'วิชานี้ยังไม่มีงาน'; return; }
-        el.innerHTML = `ในวิชานี้คุณสะสมได้ <b class="text-brand-600 text-lg">${xp} XP</b> (จาก ${works} งาน)`;
+        ['total','pending','submitted','graded','late'].forEach(k => { const el2=document.getElementById('work-'+k); if(el2) el2.textContent=stats[k]; });
+        document.getElementById('work-list').innerHTML = rows.length ? rows.sort((a,b)=>(new Date(b.w.updateTime||b.w.creationTime))-(new Date(a.w.updateTime||a.w.creationTime))).map(({w,mine,submitted,grade}) => {
+            const status = !submitted ? ['รอส่ง','text-amber-700 bg-amber-50'] : grade != null ? [`ตรวจแล้ว: ${grade}/${w.maxPoints ?? '-'}`, 'text-emerald-700 bg-emerald-50'] : ['ส่งแล้ว รอตรวจ','text-blue-700 bg-blue-50'];
+            return `<div class="flex items-center justify-between gap-3 rounded-lg border border-slate-100 p-3"><div class="min-w-0"><p class="text-sm font-semibold text-slate-700 truncate">${w.title || 'งานไม่มีชื่อ'}</p><p class="text-xs text-slate-400">กำหนดส่ง: ${w.dueDate ? `${w.dueDate.day}/${w.dueDate.month}/${w.dueDate.year}` : 'ไม่ระบุ'}</p></div><span class="shrink-0 rounded-full px-2 py-1 text-xs font-semibold ${status[1]}">${status[0]}</span></div>`;
+        }).join('') : '<p class="text-sm text-slate-400">วิชานี้ยังไม่มีงาน</p>';
+        el.innerHTML = `ในวิชานี้คุณสะสมได้ <b class="text-emerald-600 text-lg">${xp} XP</b> (จาก ${works.length} งาน)`;
         await refreshCentral();
     } catch (e) { el.textContent = 'โหลดอันดับไม่สำเร็จ — ลองเลือกวิชาใหม่'; }
 }

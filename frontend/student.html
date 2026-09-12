@@ -14,6 +14,11 @@
         @keyframes eggShake { 0%,100% { transform: rotate(-8deg) scale(1); } 50% { transform: rotate(8deg) scale(1.06); } }
         .pet-pop { transition: transform .2s; }
         .pet-pop:hover { transform: scale(1.25) rotate(-6deg); }
+        .pet-stage { position: relative; display: inline-flex; align-items: center; justify-content: center; overflow: visible; }
+        .pet-stage-hero { width: 118px; height: 118px; margin: 0 auto; }
+        .pet-sprite { width: 104px; height: 104px; object-fit: contain; filter: drop-shadow(0 8px 5px rgba(48,75,110,.22)); mix-blend-mode: multiply; }
+        .pet-breathe { animation: petFloat 2.2s ease-in-out infinite; transform-origin: 50% 85%; }
+        @keyframes petFloat { 0%,100% { transform: translateY(2px) rotate(-2deg) scale(1); } 50% { transform: translateY(-8px) rotate(2deg) scale(1.04); } }
         .fade-in { animation: fadeIn .35s ease; }
         @keyframes fadeIn { from { opacity:0; transform:translateY(6px);} to { opacity:1; transform:none;} }
     </style>
@@ -229,13 +234,13 @@ function renderMyCard() {
     document.getElementById('spendable').textContent = sp;
     document.getElementById('pet-count').textContent = (central?.pets || []).length;
     const pets = central?.pets || [];
-    document.getElementById('my-pet').innerHTML = pets.length ? `<img src="${pets[pets.length-1].img}" class="w-16 h-16 object-contain">` : '🥚';
+    document.getElementById('my-pet').innerHTML = pets.length ? `<div class="pet-stage pet-stage-hero"><img src="${pets[pets.length-1].img}" class="pet-sprite pet-breathe" draggable="false"></div>` : '🥚';
 }
 
 function renderPets() {
     const pets = central?.pets || [];
     document.getElementById('my-pets').innerHTML = pets.length
-        ? pets.map(p => `<img src="${p.img}" title="${p.name}${p.stars>1?` ⭐${p.stars}`:''}" class="w-14 h-14 object-contain bg-white border border-slate-200 rounded-lg pet-pop cursor-pointer">`).join('')
+        ? pets.map(p => `<div class="pet-stage"><img src="${p.img}" title="${p.name}${p.stars>1?` ⭐${p.stars}`:''}" class="w-14 h-14 object-contain pet-pop cursor-pointer pet-sprite" draggable="false"></div>`).join('')
         : '<p class="text-sm text-slate-400">ยังไม่มีคู่หู — เปิดไข่ด้านล่างได้เลย!</p>';
 }
 

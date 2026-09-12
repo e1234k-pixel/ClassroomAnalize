@@ -167,7 +167,10 @@ function toast(m) {
 }
 async function gapi(p) {
     const r = await fetch(`https://classroom.googleapis.com/v1/${p}`, { headers: { Authorization: `Bearer ${token}` } });
-    if (!r.ok) throw new Error(`${r.status}`);
+    if (!r.ok) {
+        const body = await r.text().catch(() => '');
+        throw new Error(`Google Classroom ${r.status}: ${body.slice(0,160)}`);
+    }
     return r.json();
 }
 async function apiGet(p) { const r = await fetch(`${API}${p}`); if (!r.ok) throw new Error('api'); return r.json(); }
@@ -315,8 +318,9 @@ async function loadMyRank() {
         let xp = 0, rows = [];
         for (const w of works) {
             try {
-                const sd = await gapi(`courses/${cid}/courseWork/${w.id}/studentSubmissions?userId=me&pageSize=10&states=NEW%2CTURNED_IN%2CRETURNED%2CRECLAIMED`);
-                const mine = (sd.studentSubmissions || []).find(s => s.userId === myUid) || (sd.studentSubmissions || [])[0];
+                // Google Classroom expects states as repeated params; omit it because userId=me already scopes the result.
+                const sd = await gapi(`courses/${cid}/courseWork/${w.id}/studentSubmissions?userId=me&pageSize=10`);
+                const mine = (sd.studentSubmissions || []).find(s => !myUid || s.userId === myUid) || (sd.studentSubmissions || [])[0];
                 const state = mine?.state || 'NEW';
                 const submitted = !!mine && !['NEW','CREATED'].includes(state);
                 const grade = mine?.assignedGrade ?? mine?.draftGrade;
@@ -333,7 +337,12 @@ async function loadMyRank() {
         }).join('') : '<p class="text-sm text-slate-400">วิชานี้ยังไม่มีงาน</p>';
         el.innerHTML = `ในวิชานี้คุณสะสมได้ <b class="text-emerald-600 text-lg">${xp} XP</b> (จาก ${works.length} งาน)`;
         await refreshCentral();
-    } catch (e) { el.textContent = 'โหลดอันดับไม่สำเร็จ — ลองเลือกวิชาใหม่'; }
+    } catch (e) {
+        console.error('workload load failed', e);
+        el.textContent = `โหลดข้อมูลไม่สำเร็จ: ${e.message || 'Google API error'}`;
+        const list = document.getElementById('work-list');
+        if (list) list.innerHTML = `<p class="text-sm text-rose-600">${e.message || 'ไม่สามารถอ่านข้อมูล Classroom ได้'}</p>`;
+    }
 }
 
 // identify my uid: best source = roster of my course (always contains me)

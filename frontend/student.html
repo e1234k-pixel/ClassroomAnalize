@@ -128,7 +128,7 @@ const SCOPES = [
 const API = 'https://classroom-hub-api.ekai.workers.dev';
 const HUB_KEY = localStorage.getItem('hubKey') || '';
 
-let token = null, myUid = null, myName = '', myEmail = '', myCourses = [], central = null;
+let token = null, myUid = null, myName = '', myEmail = '', myCourses = [], central = null, courseXp = null;
 
 const LEVELS = [
     { min: 0, name: 'ดาวรุ่ง', icon: '⭐' },
@@ -254,7 +254,7 @@ async function refreshCentral() {
 }
 
 function renderMyCard() {
-    const xp = central?.totalXp || 0, sp = central?.spendable ?? xp;
+    const xp = central?.totalXp ?? courseXp ?? 0, sp = central?.spendable ?? xp;
     const lv = levelOf(xp);
     const next = LEVELS.find(l => l.min > xp);
     document.getElementById('my-level').textContent = `${lv.name} ${lv.icon}`;
@@ -337,6 +337,8 @@ async function loadMyRank() {
             const status = !submitted ? ['รอส่ง','text-amber-700 bg-amber-50'] : grade != null ? [`ตรวจแล้ว: ${grade}/${w.maxPoints ?? '-'}`, 'text-emerald-700 bg-emerald-50'] : ['ส่งแล้ว รอตรวจ','text-blue-700 bg-blue-50'];
             return `<div class="flex items-center justify-between gap-3 rounded-lg border border-slate-100 p-3"><div class="min-w-0"><p class="text-sm font-semibold text-slate-700 truncate">${w.title || 'งานไม่มีชื่อ'}</p><p class="text-xs text-slate-400">กำหนดส่ง: ${w.dueDate ? `${w.dueDate.day}/${w.dueDate.month}/${w.dueDate.year}` : 'ไม่ระบุ'}</p></div><span class="shrink-0 rounded-full px-2 py-1 text-xs font-semibold ${status[1]}">${status[0]}</span></div>`;
         }).join('') : '<p class="text-sm text-slate-400">วิชานี้ยังไม่มีงาน</p>';
+        courseXp = xp;
+        renderMyCard();
         el.innerHTML = `ในวิชานี้คุณสะสมได้ <b class="text-emerald-600 text-lg">${xp} XP</b> (จาก ${works.length} งาน)`;
         await refreshCentral();
     } catch (e) {

@@ -189,6 +189,8 @@ function login() {
             token = resp.access_token;
             document.getElementById('login-modal').classList.add('hidden');
             document.getElementById('main').classList.remove('hidden');
+            // Render the shop immediately; it must not depend on Worker/D1 response.
+            renderShop();
             try {
                 const p = await (await fetch('https://www.googleapis.com/oauth2/v2/userinfo', { headers: { Authorization: `Bearer ${token}` } })).json();
                 myName = p.name || 'นักเรียน';
@@ -274,13 +276,17 @@ function renderPets() {
 }
 
 function renderShop() {
-    document.getElementById('shop-grid').innerHTML = SHOP_ITEMS.map(it => `
+    const grid = document.getElementById('shop-grid');
+    if (!grid) return;
+    grid.innerHTML = SHOP_ITEMS.map(it => `
         <div class="border border-slate-200 rounded-xl p-3 text-center bg-white">
             <div class="text-3xl mb-1">${it.icon}</div>
             <p class="text-sm font-bold text-slate-700">${it.name}</p>
             <button onclick="buy('${it.id}',${it.cost})" class="w-full mt-2 bg-amber-400 hover:bg-amber-500 text-amber-900 text-xs font-bold py-1.5 rounded-lg">🪙 ${it.cost} XP</button>
         </div>`).join('');
-}
+} 
+// Keep the catalog visible even before login/data loading.
+window.addEventListener('DOMContentLoaded', renderShop);
 
 async function buy(id, cost) {
     try {

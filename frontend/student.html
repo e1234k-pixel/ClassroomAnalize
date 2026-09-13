@@ -17,6 +17,8 @@
         .pet-stage { position: relative; display: inline-flex; align-items: center; justify-content: center; overflow: visible; }
         .pet-stage-hero { width: 118px; height: 118px; margin: 0 auto; }
         .pet-sprite { width: 104px; height: 104px; object-fit: contain; filter: drop-shadow(0 8px 5px rgba(48,75,110,.22)); mix-blend-mode: multiply; }
+        .level-art { width: 52px; height: 52px; display:flex; align-items:center; justify-content:center; font-size: 2.6rem; line-height:1; filter: drop-shadow(0 5px 4px rgba(15,23,42,.25)); animation: levelFloat 2.6s ease-in-out infinite; }
+        @keyframes levelFloat { 0%,100% { transform: translateY(1px) rotate(-2deg); } 50% { transform: translateY(-4px) rotate(2deg); } }
         .pet-breathe { animation: petFloat 2.2s ease-in-out infinite; transform-origin: 50% 85%; }
         @keyframes petFloat { 0%,100% { transform: translateY(2px) rotate(-2deg) scale(1); } 50% { transform: translateY(-8px) rotate(2deg) scale(1.04); } }
         .fade-in { animation: fadeIn .35s ease; }
@@ -61,7 +63,10 @@
             <div id="my-pet" class="text-5xl" style="animation: bounce 2s infinite">🥚</div>
             <div class="flex-1">
                 <p class="text-xs opacity-80">ระดับของฉัน</p>
-                <p id="my-level" class="text-xl font-bold">ดาวรุ่ง ⭐</p>
+                <div class="flex items-center gap-2">
+                    <div id="my-level-art" class="level-art" aria-label="รูปประจำระดับ">🐣</div>
+                    <p id="my-level" class="text-xl font-bold">ดาวรุ่ง</p>
+                </div>
                 <div class="h-2.5 bg-white/30 rounded-full mt-1 overflow-hidden"><div id="my-progress" class="h-full bg-white" style="width:0%"></div></div>
                 <p id="my-xp-label" class="text-xs mt-1 opacity-90">0 XP</p>
             </div>
@@ -131,11 +136,11 @@ const HUB_KEY = localStorage.getItem('hubKey') || '';
 let token = null, myUid = null, myName = '', myEmail = '', myCourses = [], central = null, courseXp = null;
 
 const LEVELS = [
-    { min: 0, name: 'ดาวรุ่ง', icon: '⭐' },
-    { min: 200, name: 'นักสำรวจ', icon: '🧭' },
-    { min: 500, name: 'นักผจญภัย', icon: '🗺️' },
-    { min: 900, name: 'นักปราชญ์', icon: '📚' },
-    { min: 1400, name: 'ตำนานห้องเรียน', icon: '🏆' },
+    { min: 0, name: 'ดาวรุ่ง', icon: '🐣' },
+    { min: 200, name: 'นักสำรวจ', icon: '🐥' },
+    { min: 500, name: 'นักผจญภัย', icon: '🐺' },
+    { min: 900, name: 'นักปราชญ์', icon: '🦉' },
+    { min: 1400, name: 'ตำนานห้องเรียน', icon: '🐉' },
 ];
 const SHOP_ITEMS = [
     { id: 'egg_common', name: 'ไข่ธรรมดา', icon: '🥚', cost: 150 },
@@ -259,7 +264,9 @@ function renderMyCard() {
     const xp = central?.totalXp ?? courseXp ?? 0, sp = central?.spendable ?? xp;
     const lv = levelOf(xp);
     const next = LEVELS.find(l => l.min > xp);
-    document.getElementById('my-level').textContent = `${lv.name} ${lv.icon}`;
+    document.getElementById('my-level').textContent = lv.name;
+    const art = document.getElementById('my-level-art');
+    if (art) { art.textContent = lv.icon; art.setAttribute('aria-label', `${lv.name} ${lv.icon}`); }
     document.getElementById('my-progress').style.width = (next ? Math.min(100, Math.round((xp - lv.min) / (next.min - lv.min) * 100)) : 100) + '%';
     document.getElementById('my-xp-label').textContent = `${xp} XP ${next ? `• อีก ${next.min - xp} ถึง ${next.name}` : '• ระดับสูงสุด!'}`;
     document.getElementById('spendable').textContent = sp;

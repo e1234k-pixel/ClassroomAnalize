@@ -119,9 +119,11 @@ const SCOPES = [
     'https://www.googleapis.com/auth/userinfo.profile',
     'https://www.googleapis.com/auth/userinfo.email',
     'https://www.googleapis.com/auth/classroom.courses.readonly',
-    'https://www.googleapis.com/auth/classroom.rosters.readonly',
-    'https://www.googleapis.com/auth/classroom.coursework.students.readonly',
-    'https://www.googleapis.com/auth/classroom.student-submissions.students.readonly',
+    // Do not request classroom.rosters.readonly for students; it is teacher-oriented.
+    // Student-only scopes avoid PERMISSION_DENIED on coursework/submissions.
+    // Student-only scopes: the .students scopes are teacher scopes and cause 403 for pupils.
+    'https://www.googleapis.com/auth/classroom.coursework.me.readonly',
+    'https://www.googleapis.com/auth/classroom.student-submissions.me.readonly',
 ].join(' ');
 const API = 'https://classroom-hub-api.ekai.workers.dev';
 const HUB_KEY = localStorage.getItem('hubKey') || '';
